@@ -27,6 +27,8 @@ add_mlir_interface(DaphneInferShapeOpInterface)
 add_mlir_interface(DaphneInferSparsityOpInterface)
 add_mlir_interface(DaphneInferTypesOpInterface)
 add_mlir_interface(DaphneVectorizableOpInterface)
+add_mlir_interface(DaphneInferSymmetryOpInterface)
+
 
 set(LLVM_TARGET_DEFINITIONS Passes.td)
 mlir_tablegen(Passes.h.inc -gen-pass-decls -name Daphne)
@@ -42,6 +44,7 @@ add_mlir_dialect_library(MLIRDaphne
     DaphneInferSparsityOpInterface.cpp
     DaphneInferTypesOpInterface.cpp
     DaphneVectorizableOpInterface.cpp
+    DaphneInferSymmetryOpInterface.cpp
 
     DEPENDS
     MLIRDaphneOpsIncGen

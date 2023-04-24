@@ -33,6 +33,9 @@ include "ir/daphneir/DaphneTypeAdaptationTraits.td"
 include "ir/daphneir/DaphneTypeInferenceTraits.td"
 include "ir/daphneir/CUDASupport.td"
 include "ir/daphneir/FPGAOPENCLSupport.td"
+include "ir/daphneir/DaphneInferSymmetryOpInterface.td"
+include "ir/daphneir/DaphneInferSymmetryTraits.td"
+
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
@@ -72,14 +75,16 @@ class Daphne_Op<string mnemonic, list<Trait> traits = []> :
 
 def Daphne_FillOp : Daphne_Op<"fill", [
     DataTypeMat, ValueTypeFromFirstArg,
-    NumRowsFromIthScalar<1>, NumColsFromIthScalar<2>
+    NumRowsFromIthScalar<1>, NumColsFromIthScalar<2>,
+    DeclareOpInterfaceMethods<InferSymmetryOpInterface>,
 ]> {
     let arguments = (ins AnyScalar:$arg, Size:$numRows, Size:$numCols);
     let results = (outs MatrixOrU:$res);
 }
 
 def Daphne_MatrixConstantOp : Daphne_Op<"matrixConstant", [
-    DataTypeMat
+    DataTypeMat,
+    DeclareOpInterfaceMethods<InferSymmetryOpInterface>
 ]>{
     let arguments = (ins UI64:$matrixAddr);
     let results = (outs MatrixOrU:$res);
@@ -98,7 +103,8 @@ def Daphne_CreateFrameOp : Daphne_Op<"createFrame", [
 def Daphne_DiagMatrixOp : Daphne_Op<"diagMatrix", [
     TypeFromFirstArg,
     NumRowsFromArg, NumColsFromArgNumRows,
-    DeclareOpInterfaceMethods<InferSparsityOpInterface>
+    DeclareOpInterfaceMethods<InferSparsityOpInterface>,
+    DeclareOpInterfaceMethods<InferSymmetryOpInterface>
 ]> {
     let arguments = (ins MatrixOrU:$arg);
     let results = (outs MatrixOrU:$res);
@@ -155,7 +161,8 @@ def Daphne_MatMulOp : Daphne_Op<"matMul", [
     DeclareOpInterfaceMethods<VectorizableOpInterface>,
     DataTypeMat, ValueTypeFromArgs,
     DeclareOpInterfaceMethods<InferShapeOpInterface>,
-    DeclareOpInterfaceMethods<InferSparsityOpInterface>, CUDASupport, FPGAOPENCLSupport,
+    DeclareOpInterfaceMethods<InferSparsityOpInterface>,
+    CUDASupport, FPGAOPENCLSupport,
     CastFirstTwoArgsToResType
 ]> {
     let arguments = (ins MatrixOf<[NumScalar]>:$lhs, MatrixOf<[NumScalar]>:$rhs, BoolScalar:$transa, BoolScalar:$transb);
@@ -170,7 +177,8 @@ def Daphne_MatMulOp : Daphne_Op<"matMul", [
 class Daphne_EwUnaryOp<string name, Type scalarType, list<Trait> traits = []> : Daphne_Op<name, !listconcat(traits, [
     DataTypeFromFirstArg,
     ShapeFromArg,
-    CastArgsToResType
+    CastArgsToResType,
+    SymmetricIfArg
 ])> {
     let arguments = (ins AnyTypeOf<[MatrixOf<[scalarType]>, scalarType, Unknown]>:$arg);
     let results = (outs AnyTypeOf<[MatrixOf<[scalarType]>, scalarType, Unknown]>:$res);
@@ -225,7 +233,8 @@ class Daphne_EwBinaryOp<string name, Type scalarType, list<Trait> traits = []>
     DeclareOpInterfaceMethods<DistributableOpInterface>,
     DeclareOpInterfaceMethods<VectorizableOpInterface>,
     ShapeEwBinary,
-    CastArgsToResType
+    CastArgsToResType,
+    EwSymmetricIfBoth
 ])> {
     let arguments = (ins AnyTypeOf<[MatrixOf<[scalarType]>, scalarType, Unknown]>:$lhs, AnyTypeOf<[MatrixOf<[scalarType]>, scalarType, Unknown]>:$rhs);
     let results = (outs AnyTypeOf<[MatrixOf<[scalarType]>, scalarType, Unknown]>:$res);
@@ -550,12 +559,18 @@ def Daphne_ReshapeOp : Daphne_Op<"reshape", [
     let results = (outs MatrixOrU:$res);
 }
 
+def Inject_TraitOp : Daphne_Op<"inject">{
+    let arguments = (BoolScalar:$property);
+    let results = (outs BoolScalar:$res);
+}
+
 def Daphne_TransposeOp : Daphne_Op<"transpose", [
     TypeFromFirstArg,
     DeclareOpInterfaceMethods<VectorizableOpInterface>,
     NumRowsFromArgNumCols, NumColsFromArgNumRows, SparsityFromArg, CUDASupport,
-    Pure
+    Pure, SymmetricIfArg
 ]> {
+    let hasCanonicalizeMethod = 1;
     let arguments = (ins MatrixOrU:$arg);
     let results = (outs MatrixOrU:$res);
 
@@ -1374,7 +1389,7 @@ def Daphne_DecRefOp : Daphne_Op<"decRef"> {
 // These are currently still need for the prototype to work. They will be
 // removed/replaced/changed in the future.
 
-def Daphne_ConstantOp : Daphne_Op<"constant", [ConstantLike, Pure]> {
+def Daphne_ConstantOp : Daphne_Op<"constant", [ConstantLike, Pure, SymmetricRes]> {
     let summary = "constant operation";
 
     let arguments = (ins AnyAttr:$value);
