@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-20.04
-    container: daphneeu/daphne-dev:latest
+    container: daphneeu/github-action:latest
     env:
       # fix usage of tput in build script:
       TERM: dumb
@@ -57,3 +57,11 @@ jobs:
 
     - name: "Run a simple daph script"
       run: bin/daphne scripts/examples/hello-world.daph
+
+    - name: 'Upload Artifact'
+      uses: actions/upload-artifact@v3
+      with:
+        name: daphne
+        path: |
+          bin/
+          lib/

@@ -49,6 +49,7 @@ function printHelp {
     echo "  --cuda            Compile with support for CUDA ops"
     echo "  --debug           Compile with support for debug mode"
     echo "  --fpgaopencl      Compile with support for Intel PAC D5005 FPGA"
+    echo " --mpi             Compile with support for MPI"
 }
 
 #******************************************************************************
@@ -393,6 +394,7 @@ abslVersion=20211102.0
 grpcVersion=1.38.0
 nlohmannjsonVersion=3.10.5
 arrowVersion=11.0.0
+openMPIVersion=4.1.5
 
 #******************************************************************************
 # Set some prefixes, paths and dirs
@@ -428,6 +430,7 @@ unknown_options=""
 BUILD_CUDA="-DUSE_CUDA=OFF"
 BUILD_FPGAOPENCL="-DUSE_FPGAOPENCL=OFF"
 BUILD_DEBUG="-DCMAKE_BUILD_TYPE=Release"
+BUILD_MPI="-DUSE_MPI=OFF"
 WITH_DEPS=1
 WITH_SUBMODULE_UPDATE=1
 
@@ -472,6 +475,10 @@ while [[ $# -gt 0 ]]; do
         echo using FPGAOPENCL
         export BUILD_FPGAOPENCL="-DUSE_FPGAOPENCL=ON"
         ;;
+    --mpi)
+        echo using MPI
+        export BUILD_MPI="-DUSE_MPI=ON"
+        ;;
     --debug)
         echo building DEBUG version
         export BUILD_DEBUG="-DCMAKE_BUILD_TYPE=Debug"
@@ -483,9 +490,10 @@ while [[ $# -gt 0 ]]; do
     -nd | --no-deps)
         WITH_DEPS=0
         ;;
-    --no-submodule-update)
-            WITH_SUBMODULE_UPDATE=0
-            ;;*)
+    -ns | --no-submodule-update)
+        WITH_SUBMODULE_UPDATE=0
+        ;;
+      *)
         unknown_options="${unknown_options} ${key}"
         ;;
     esac
@@ -543,7 +551,8 @@ if [ $WITH_DEPS -gt 0 ]; then
             if [ -d "$submodule_path" ] && [ $WITH_SUBMODULE_UPDATE -ne 0 ]; then
                 git submodule update --init --recursive
             fi
-        else
+        # do a submodule update only if llvm path is empty (e.g., initial repo checkout)
+        elif [ ! "$(ls -A ${thirdpartyPath}/${llvmName})" ] && [ $WITH_SUBMODULE_UPDATE -ne 0 ]; then
             git submodule update --init --recursive
         fi
     fi
@@ -596,7 +605,7 @@ if [ $WITH_DEPS -gt 0 ]; then
 
         # enable fail on error again
         set -e
-        cmake --build "${buildPrefix}/${antlrCppRuntimeDirName}" --target install
+        cmake --build "${buildPrefix}/${antlrCppRuntimeDirName}" --target install/strip
 
         dependency_install_success "antlr_v${antlrVersion}"
     else
@@ -681,12 +690,34 @@ if [ $WITH_DEPS -gt 0 ]; then
     if ! is_dependency_installed "absl_v${abslVersion}"; then
         cmake -S "$abslPath" -B "$buildPrefix/absl" -G Ninja -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE \
             -DCMAKE_INSTALL_PREFIX="$installPrefix" -DCMAKE_CXX_STANDARD=17 -DABSL_PROPAGATE_CXX_STD=ON
-        cmake --build "$buildPrefix/absl" --target install
+        cmake --build "$buildPrefix/absl" --target install/strip
         dependency_install_success "absl_v${abslVersion}"
     else
         daphne_msg "No need to build Abseil again."
     fi
 
+    #------------------------------------------------------------------------------
+    # MPI (Default is MPI library is OpenMPI but cut can be any)
+    #------------------------------------------------------------------------------
+    MPIZipName=openmpi-$openMPIVersion.tar.gz
+    MPIInstDirName=$installPrefix
+    if ! is_dependency_downloaded "openmpi_v${openMPIVersion}"; then
+        daphne_msg "Get openmpi version ${openMPIVersion}"
+        wget "https://download.open-mpi.org/release/open-mpi/v4.1/$MPIZipName" -qO "${cacheDir}/${MPIZipName}"
+        tar -xf "$cacheDir/$MPIZipName" --directory "$sourcePrefix"
+        dependency_download_success "openmpi_v${openMPIVersion}"
+        mkdir --parents "$MPIInstDirName"
+    fi
+    if ! is_dependency_installed "openmpi_v${openMPIVersion}"; then
+        cd "$sourcePrefix/openmpi-$openMPIVersion"
+        ./configure --prefix="$MPIInstDirName"
+        make -j"$(nproc)" all
+        make install
+        cd -
+        dependency_install_success "openmpi_v${openMPIVersion}"
+    else
+        daphne_msg "No need to build OpenMPI again"
+    fi
     #------------------------------------------------------------------------------
     # gRPC
     #------------------------------------------------------------------------------
@@ -719,12 +750,11 @@ if [ $WITH_DEPS -gt 0 ]; then
             -DCMAKE_INCLUDE_PATH="$installPrefix/include" \
             -DgRPC_ABSL_PROVIDER=package \
             -DgRPC_ZLIB_PROVIDER=package
-        cmake --build "$buildPrefix/$grpcDirName" --target install
+        cmake --build "$buildPrefix/$grpcDirName" --target install/strip
         dependency_install_success "grpc_v${grpcVersion}"
     else
         daphne_msg "No need to build GRPC again."
     fi
-
     #------------------------------------------------------------------------------
     # Arrow / Parquet
     #------------------------------------------------------------------------------
@@ -743,7 +773,7 @@ if [ $WITH_DEPS -gt 0 ]; then
         cmake -G Ninja -S "${sourcePrefix}/${arrowDirName}/cpp" -B "${buildPrefix}/${arrowDirName}" \
             -DCMAKE_INSTALL_PREFIX="${installPrefix}" \
             -DARROW_CSV=ON -DARROW_FILESYSTEM=ON -DARROW_PARQUET=ON
-        cmake --build "${buildPrefix}/${arrowDirName}" --target install
+        cmake --build "${buildPrefix}/${arrowDirName}" --target install/strip
         dependency_install_success "arrow_v${arrowVersion}"
     else
         daphne_msg "No need to build Arrow again."
@@ -800,7 +830,7 @@ if [ $WITH_DEPS -gt 0 ]; then
             -DLLVM_ENABLE_RTTI=ON \
             -DCMAKE_INSTALL_PREFIX="$installPrefix"
         cmake --build "$buildPrefix/$llvmName" --target check-mlir
-        cmake --build "$buildPrefix/$llvmName" --target install
+        cmake --build "$buildPrefix/$llvmName" --target install/strip
         echo "$llvmCommit" >"$llvmCommitFilePath"
         cd - >/dev/null
         dependency_install_success "llvm_v${llvmCommit}"
@@ -831,7 +861,7 @@ daphne_msg "Build Daphne"
 
 cmake -S "$projectRoot" -B "$daphneBuildDir" -G Ninja -DANTLR_VERSION="$antlrVersion" \
     -DCMAKE_PREFIX_PATH="$installPrefix" \
-    $BUILD_CUDA $BUILD_FPGAOPENCL $BUILD_DEBUG
+    $BUILD_CUDA $BUILD_FPGAOPENCL $BUILD_DEBUG $BUILD_MPI
 
 cmake --build "$daphneBuildDir" --target "$target"
 
@@ -839,4 +869,3 @@ build_ts_end=$(date +%s%N)
 daphne_msg "Successfully built Daphne://${target} (took $(printableTimestamp $((build_ts_end - build_ts_begin))))"
 
 set +e
-

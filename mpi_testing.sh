@@ -14,13 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DOCKER_IMAGE=daphneeu/daphne-dev-interactive
-DAPHNE_ROOT=$PWD
-
-LD_LIBRARY_PATH=/daphne/lib:$LD_LIBRARY_PATH
-PATH=/daphne/bin:$PATH
-
-# shellcheck disable=SC2046
-docker run --hostname daphne-container -it --rm -w "$DAPHNE_ROOT" \
- -e TERM=screen-256color -e PATH -e LD_LIBRARY_PATH -e USER=$(id -n -u) -e UID=$(id -u) -e GID=$(id -g) \
- -v "$DAPHNE_ROOT:$DAPHNE_ROOT" $DOCKER_IMAGE
+DISTRIBUTED_WORKERS=unused mpirun --allow-run-as-root -np 4 ./bin/daphne --distributed --dist_backend=MPI --vec scripts/examples/matrix_addition_for_mpi.daph
