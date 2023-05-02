@@ -1142,8 +1142,27 @@ mlir::LogicalResult mlir::daphne::TransposeOp::canonicalize(
     if(auto mt = argTyp.dyn_cast<daphne::MatrixType>()) {
 
         if (mt.getSymmetry()) {
-            // rewriter.replaceAllUsesWith(op, op.getArg());
             rewriter.replaceOp(op, op.getArg());
+            // auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(op.getLoc(), op.getArg().getType(), op.getArg());
+            // rewriter.replaceOpWithNewOp<mlir::daphne::EwSqrtOp>(op, newOp.getArg().getType(), newOp.getRes());
+            return mlir::success();
+        }
+
+    }
+    return mlir::failure();
+}
+
+mlir::LogicalResult mlir::daphne::EwSqrtOp::canonicalize(
+        mlir::daphne::EwSqrtOp op, PatternRewriter &rewriter
+) {
+
+    auto argTyp = op.getArg().getType();
+
+    if(auto mt = argTyp.dyn_cast<daphne::MatrixType>()) {
+
+        if (mt.getSymmetry()) {
+            auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(op.getLoc(), op.getArg().getType(), op.getArg());
+            op.setOperand(newOp.getRes());
             return mlir::success();
         }
 

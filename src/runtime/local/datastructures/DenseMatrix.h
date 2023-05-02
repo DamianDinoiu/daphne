@@ -20,6 +20,7 @@
 #include <runtime/local/datastructures/DataObjectFactory.h>
 #include <runtime/local/datastructures/Matrix.h>
 #include <runtime/local/datastructures/ValueTypeUtils.h>
+#include <runtime/local/datastructures/Traits.h>
 
 #include <iostream>
 #include <memory>
@@ -53,6 +54,9 @@ class DenseMatrix : public Matrix<ValueType>
     
     size_t lastAppendedRowIdx;
     size_t lastAppendedColIdx;
+    bool symmetric = false;
+    Traits* traits = new Traits();
+
     
     // Grant DataObjectFactory access to the private constructors and
     // destructors.
@@ -155,6 +159,8 @@ class DenseMatrix : public Matrix<ValueType>
 
 public:
 
+
+
     void shrinkNumRows(size_t numRows) {
         assert((numRows <= this->numRows) && "number of rows can only the shrunk");
         // TODO Here we could reduce the allocated size of the values array.
@@ -211,6 +217,18 @@ public:
     ValueType get(size_t rowIdx, size_t colIdx) const override {
         return getValues()[pos(rowIdx, colIdx)];
     }
+
+    bool getSymmetry() const {
+        return symmetric;
+    }
+
+    Traits* getTraits() const {
+        return traits;
+    }
+
+    void setSymmetr(bool symmetry) {
+        symmetric = symmetry;
+    } 
     
     void set(size_t rowIdx, size_t colIdx, ValueType value) override {
         auto vals = getValues();
