@@ -2283,8 +2283,8 @@
                     "name": "arg"
                 },
                 {
-                    "type": "const Traits *",
-                    "name": "traits"
+                    "type": "int64_t *",
+                    "name": "test"
                 }
             ]
         },

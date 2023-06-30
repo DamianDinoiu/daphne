@@ -170,6 +170,7 @@ namespace
 		    
 
             callee << '_' << op->getName().stripDialect().data();
+        
 
 
             // TODO Don't enumerate all ops, decide based on a trait.
@@ -363,10 +364,6 @@ namespace
                 newOperands.push_back(rewriteStr);
             }
 
-
-            if (llvm::isa<daphne::InsertTraitsOp>(op)){
-                callee << "__Traits";
-            }
             // Inject the current DaphneContext as the last input parameter to
             // all kernel calls, unless it's a CreateDaphneContextOp.
             if(!llvm::isa<daphne::CreateDaphneContextOp>(op))

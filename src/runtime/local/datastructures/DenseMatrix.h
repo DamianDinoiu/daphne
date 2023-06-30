@@ -74,6 +74,7 @@ class DenseMatrix : public Matrix<ValueType>
      * uninitialized (`false`).
      */
     DenseMatrix(size_t maxNumRows, size_t numCols, bool zero, IAllocationDescriptor* allocInfo = nullptr);
+    DenseMatrix(size_t maxNumRows, size_t numCols, bool zero, bool symmetry, IAllocationDescriptor* allocInfo = nullptr);
 
     /**
      * @brief Creates a `DenseMatrix` around an existing array of values without copying the data.

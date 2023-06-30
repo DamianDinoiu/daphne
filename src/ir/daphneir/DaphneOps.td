@@ -35,6 +35,8 @@ include "ir/daphneir/CUDASupport.td"
 include "ir/daphneir/FPGAOPENCLSupport.td"
 include "ir/daphneir/DaphneInferSymmetryOpInterface.td"
 include "ir/daphneir/DaphneInferSymmetryTraits.td"
+include "ir/daphneir/DaphneInferMinMaxOpInterface.td"
+include "ir/daphneir/DaphneInferMinMaxTraits.td"
 
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
@@ -77,6 +79,7 @@ def Daphne_FillOp : Daphne_Op<"fill", [
     DataTypeMat, ValueTypeFromFirstArg,
     NumRowsFromIthScalar<1>, NumColsFromIthScalar<2>,
     DeclareOpInterfaceMethods<InferSymmetryOpInterface>,
+    DeclareOpInterfaceMethods<InferMinMaxOpInterface>
 ]> {
     let arguments = (ins AnyScalar:$arg, Size:$numRows, Size:$numCols);
     let results = (outs MatrixOrU:$res);
@@ -174,6 +177,12 @@ def Daphne_MatMulOp : Daphne_Op<"matMul", [
 // Elementwise unary
 // ****************************************************************************
 
+def Daphne_InsertTraitsOp : Daphne_Op<"insertTraits"> {
+    let arguments = (ins MatrixOrFrame:$arg,  AnyScalar:$test);
+    let results = (outs MatrixOrU:$res);
+}
+
+
 class Daphne_EwUnaryOp<string name, Type scalarType, list<Trait> traits = []> : Daphne_Op<name, !listconcat(traits, [
     DataTypeFromFirstArg,
     ShapeFromArg,
@@ -187,7 +196,6 @@ class Daphne_EwUnaryOp<string name, Type scalarType, list<Trait> traits = []> : 
 // ----------------------------------------------------------------------------
 // Arithmetic/general math
 // ----------------------------------------------------------------------------
-def Daphne_InsertTraitsOp : Daphne_EwUnaryOp<"insertTraits", NumScalar, [ValueTypeFromFirstArg]>;
 def Daphne_EwMinusOp : Daphne_EwUnaryOp<"ewMinus", NumScalar, [ValueTypeFromFirstArg]>;
 def Daphne_EwAbsOp : Daphne_EwUnaryOp<"ewAbs", NumScalar, [ValueTypeFromFirstArg]>;
 def Daphne_EwSignOp : Daphne_EwUnaryOp<"ewSign", NumScalar, [ValueTypeFromFirstArg]>;

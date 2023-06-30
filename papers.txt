@@ -1,0 +1,2 @@
+Markus Dreseler, Jan Kossmann, Martin Boissier, Stefan Klauck, Matthias Uflacker, Hasso Plattner:
+Hyrise Re-engineered: An Extensible Database System for Research in Relational In-Memory Data Management. EDBT 2019: 313-324 - section 4 

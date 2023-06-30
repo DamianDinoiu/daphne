@@ -14,25 +14,36 @@
  * limitations under the License.
  */
 
-#ifndef SRC_RUNTIME_LOCAL_KERNELS_EWUNARYMAT_H
-#define SRC_RUNTIME_LOCAL_KERNELS_EWUNARYMAT_H
+#ifndef SRC_RUNTIME_LOCAL_KERNELS_EWUNARYTEST_H
+#define SRC_RUNTIME_LOCAL_KERNELS_EWUNARYTEST_H
 
 #include <runtime/local/context/DaphneContext.h>
 #include <runtime/local/datastructures/DataObjectFactory.h>
 #include <runtime/local/datastructures/DenseMatrix.h>
 #include <runtime/local/kernels/UnaryOpCode.h>
 #include <runtime/local/kernels/EwUnarySca.h>
+#include <runtime/local/datastructures/Traits.h>
+
 
 #include <cassert>
 #include <cstddef>
+#include <cmath>
+#include <iostream>
+
+struct Test {
+        std::vector<int> vector1;
+        std::vector<int> vector2;
+        bool symmetry;
+        int value;
+    };
 
 // ****************************************************************************
 // Struct for partial template specialization
 // ****************************************************************************
 
 template<class DTRes, class DTArg>
-struct EwUnaryMat {
-    static void apply(UnaryOpCode opCode, DTRes *& res, const DTArg * arg, DCTX(ctx)) = delete;
+struct InsertTraits {
+    static void apply(DTRes *& res, DTArg * arg, int64_t * test, DCTX(ctx)) = delete;
 };
 
 // ****************************************************************************
@@ -40,8 +51,8 @@ struct EwUnaryMat {
 // ****************************************************************************
 
 template<class DTRes, class DTArg>
-void ewUnaryMat(UnaryOpCode opCode, DTRes *& res, const DTArg * arg, DCTX(ctx)) {
-    EwUnaryMat<DTRes, DTArg>::apply(opCode, res, arg, ctx);
+void insertTraits(DTRes *& res, DTArg * arg, int64_t * test ,DCTX(ctx)) {
+    InsertTraits<DTRes, DTArg>::apply(res, arg, test, ctx);
 }
 
 // ****************************************************************************
@@ -53,42 +64,17 @@ void ewUnaryMat(UnaryOpCode opCode, DTRes *& res, const DTArg * arg, DCTX(ctx)) 
 // ----------------------------------------------------------------------------
 
 template<typename VT>
-struct EwUnaryMat<DenseMatrix<VT>, DenseMatrix<VT>> {
-    static void apply(UnaryOpCode opCode, DenseMatrix<VT> *& res, const DenseMatrix<VT> * arg, DCTX(ctx)) {
-        const size_t numRows = arg->getNumRows();
-        const size_t numCols = arg->getNumCols();
+struct InsertTraits<DenseMatrix<VT>, DenseMatrix<VT>> {
+    static void apply(DenseMatrix<VT> *& res, DenseMatrix<VT> * arg, int64_t * test, DCTX(ctx)) {
         
-        if(res == nullptr)
-            res = DataObjectFactory::create<DenseMatrix<VT>>(numRows, numCols, false);
-        
-        const VT * valuesArg = arg->getValues();
-        VT * valuesRes = res->getValues();
-        
-        EwUnaryScaFuncPtr<VT, VT> func = getEwUnaryScaFuncPtr<VT, VT>(opCode);
-        
-        // if (arg->getSymmetry()) {
-        //     for(size_t r = 0; r < numRows; r++) {
-        //         for(size_t c = r; c < numCols; c++) {
-        //             // valuesRes[c] = 10 * valuesArg[c];
-        //             auto value = valuesArg[c] * 10;
-        //             (valuesRes + arg->getRowSkip() * r)[c] = value;
-        //             (valuesRes + arg->getRowSkip() * c)[r] = value;
-        //         }
-        //         valuesArg += arg->getRowSkip();
-        //     }    
-        // } else {
-
-        //     for(size_t r = 0; r < numRows; r++) {
-        //         for(size_t c = 0; c < numCols; c++)
-        //             valuesRes[c] = 2 * valuesArg[c];
-        //         valuesArg += arg->getRowSkip();
-        //         valuesRes += res->getRowSkip();
-        //     }
-
-        // }
-
-        
+        auto properties = reinterpret_cast<Test*>(test);
+        std::cout << properties->value << "\n";
+        // auto a = 1;
+        res = const_cast<DenseMatrix<VT> *>(arg);            
+        res->increaseRefCounter();
+        // res->setProperties(properties);
+       
     }
 };
 
-#endif //SRC_RUNTIME_LOCAL_KERNELS_EWUNARYMAT_H
+#endif //SRC_RUNTIME_LOCAL_KERNELS_EWUNARYTEST_H

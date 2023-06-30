@@ -165,9 +165,10 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
                         }
                     }
                 }
-                bool doSymmeryInference = true;
+                bool doSymmetryInference = true;
+                bool doMinMaxInference = true;
 
-                if (doSymmeryInference) {
+                if (doSymmetryInference) {
 
                     std::vector<bool> symmetries = daphne::tryInferSymmetry(op);
                     const size_t numRes = op->getNumResults();
@@ -187,6 +188,34 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
                         auto ft = rt.dyn_cast<daphne::FrameType>();
                         if(mt)
                             rv.setType(mt.withSymmetry(symmetry));
+                    }
+                }
+
+                if (doSymmetryInference) {
+
+                    double minMax = daphne::tryInferMinMax(op);
+                    
+                    // std::cout << "Aici " << properties << "\n";
+                    const size_t numRes = op->getNumResults();
+                    // if(symmetries.size() != numRes)
+                    //     throw std::runtime_error(
+                    //         "sparsity inference for op " +
+                    //             op->getName().getStringRef().str() + " returned " +
+                    //             std::to_string(symmetries.size()) + " shapes, but the "
+                    //                                             "op has " + std::to_string(numRes) + " results"
+                    //     );
+
+                    for(size_t i = 0 ; i < numRes ; i++) {
+                        // const double symmetry = properties;
+                        Value rv = op->getResult(i);
+                        const Type rt = rv.getType();
+                        auto mt = rt.dyn_cast<daphne::MatrixType>();
+                        auto ft = rt.dyn_cast<daphne::FrameType>();
+                        if(mt) {
+
+                            auto properties = mt.getProperties();
+                            std::cout << properties.value << "\n";
+                        }
                     }
                 }
             }

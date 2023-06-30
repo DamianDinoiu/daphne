@@ -30,9 +30,10 @@ cmake_policy(SET CMP0116 OLD)
 # *****************************************************************************
 # Related to MLIR/LLVM
 # *****************************************************************************
-
 find_package(MLIR REQUIRED CONFIG)
-
+# list(APPEND CMAKE_PREFIX_PATH "/home/dino/daphne/thirdparty/installed/lib/cmake/mlir")
+# list(APPEND CMAKE_PREFIX_PATH "/home/dino/daphne/thirdparty/installed/lib/cmake/llvm")
+# list(APPEND CMAKE_PREFIX_PATH "/home/dino/daphne/thirdparty/installed")
 message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 

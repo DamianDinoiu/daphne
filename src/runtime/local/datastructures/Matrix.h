@@ -45,6 +45,8 @@ protected:
     };
 
 public:
+
+    int pointer;
     
     /**
      * @brief The common type of all values in this matrix.

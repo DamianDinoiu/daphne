@@ -1,0 +1,9 @@
+
+
+a = fill(9, 3, 3);
+
+b = transpose(a);
+
+
+
+print(b);
