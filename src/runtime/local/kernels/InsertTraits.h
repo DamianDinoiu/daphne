@@ -23,6 +23,7 @@
 #include <runtime/local/kernels/UnaryOpCode.h>
 #include <runtime/local/kernels/EwUnarySca.h>
 #include <runtime/local/datastructures/Traits.h>
+#include <runtime/local/datastructures/Properties.h>
 
 
 #include <cassert>
@@ -30,12 +31,7 @@
 #include <cmath>
 #include <iostream>
 
-struct Test {
-        std::vector<int> vector1;
-        std::vector<int> vector2;
-        bool symmetry;
-        int value;
-    };
+
 
 // ****************************************************************************
 // Struct for partial template specialization
@@ -67,12 +63,12 @@ template<typename VT>
 struct InsertTraits<DenseMatrix<VT>, DenseMatrix<VT>> {
     static void apply(DenseMatrix<VT> *& res, DenseMatrix<VT> * arg, int64_t * test, DCTX(ctx)) {
         
-        auto properties = reinterpret_cast<Test*>(test);
-        std::cout << properties->value << "\n";
-        // auto a = 1;
+        auto properties = reinterpret_cast<Properties*>(test);
+
+        std::cout << "Insert traits runtime = " << properties->symmetry << "\n";
         res = const_cast<DenseMatrix<VT> *>(arg);            
         res->increaseRefCounter();
-        // res->setProperties(properties);
+
        
     }
 };

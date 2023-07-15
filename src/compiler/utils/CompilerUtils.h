@@ -17,6 +17,7 @@
 #pragma once
 
 #include <ir/daphneir/Daphne.h>
+#include <memory>
 #include <parser/metadata/MetaDataParser.h>
 
 #include <mlir/Dialect/Arith/IR/Arith.h>

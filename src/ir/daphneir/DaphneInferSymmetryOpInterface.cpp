@@ -39,7 +39,7 @@ using namespace mlir::OpTrait;
 bool getSymmetryOrUnknownFromType(Value v) {
     Type t = v.getType();
     if(auto mt = t.dyn_cast<daphne::MatrixType>())
-        return mt.getSymmetry();
+        return mt.getProperties()->symmetry;
     else // scalar or frame
         // TODO: read scalar value (if 0 -> sparsity 0.0)
         return false;
@@ -50,7 +50,7 @@ bool getSymmetryOrUnknownFromType(Value v) {
 // ****************************************************************************
 
 std::vector<bool> daphne::MatrixConstantOp::inferSymmetry() {
-    return {1};
+    return {true};
 }
 
 std::vector<bool> daphne::FillOp::inferSymmetry() {

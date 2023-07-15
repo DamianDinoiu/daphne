@@ -98,6 +98,8 @@ bool DaphneIrExecutor::runPasses(mlir::ModuleOp module)
         pm.addPass(mlir::createCanonicalizerPass());
         //pm.addPass(mlir::daphne::createPrintIRPass("IR after property inference"));
 
+        pm.addNestedPass<mlir::func::FuncOp>(mlir::daphne::createInsertPropertiesPass());
+
         if(selectMatrixRepresentations_) {
             pm.addNestedPass<mlir::func::FuncOp>(mlir::daphne::createSelectMatrixRepresentationsPass());
             //pm.addPass(mlir::daphne::createPrintIRPass("IR after selecting matrix representation"));

@@ -18,7 +18,6 @@
 #define SRC_IR_DAPHNEIR_DAPHNE_H
 
 // The following includes are required by...
-#include "InferenceProperties.h"
 #include "llvm/ADT/StringRef.h"
 #include <atomic>
 
@@ -73,10 +72,13 @@
 #include <ir/daphneir/DaphneInferSymmetryOpInterface.h>
 #include <ir/daphneir/DaphneInferMinMaxOpInterface.h>
 
+#include <runtime/local/datastructures/Properties.h>
+
 
 #include <string>
 #include <utility>
 #include <vector>
+#include <memory>
 
 namespace mlir::OpTrait {
     template<class ConcreteOp>
@@ -92,12 +94,6 @@ namespace mlir::daphne {
         Sparse = 1,
     };
 
-    struct Properties {
-        std::vector<int> vector1;
-        std::vector<int> vector2;
-        bool symmetry;
-        int value;
-    };
 
     std::string matrixRepresentationToString(MatrixRepresentation rep);
 

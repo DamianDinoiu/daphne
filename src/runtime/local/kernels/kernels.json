@@ -2284,7 +2284,7 @@
                 },
                 {
                     "type": "int64_t *",
-                    "name": "test"
+                    "name": "properties"
                 }
             ]
         },

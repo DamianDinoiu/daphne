@@ -52,7 +52,7 @@ def Matrix : Daphne_Type<"Matrix"> {
     // TODO Maybe we should rename "element type" to "value type" everywhere.
     let parameters = (ins
         "::mlir::Type":$elementType,
-        "ssize_t":$numRows, "ssize_t":$numCols, "double":$sparsity, "MatrixRepresentation":$representation, "bool":$symmetry, "Properties":$properties
+        "ssize_t":$numRows, "ssize_t":$numCols, "double":$sparsity, "MatrixRepresentation":$representation, "bool":$symmetry, "std::shared_ptr<Properties>":$properties
     );
     let genVerifyDecl = 1;
     // NOTE: float needs special treatment for equality check and hashing (epsilon)
@@ -62,7 +62,8 @@ def Matrix : Daphne_Type<"Matrix"> {
         // Creates a MatrixType from mere element type information, with all
         // other parameters reset.
         TypeBuilder<(ins "::mlir::Type":$elementType), [{
-            return Base::get($_ctxt, elementType, -1, -1, -1.0, MatrixRepresentation::Dense, false, *(new Properties()));
+            auto property = std::shared_ptr<Properties>(new Properties());
+            return Base::get($_ctxt, elementType, -1, -1, -1.0, MatrixRepresentation::Dense, false, property);
         }]>,
     ];
 
@@ -91,6 +92,15 @@ def Matrix : Daphne_Type<"Matrix"> {
             return get(getContext(), getElementType(), getNumRows(), getNumCols(), getSparsity(), getRepresentation(), symmetry, getProperties());
         }
 
+        ::mlir::daphne::MatrixType withProperties(std::shared_ptr<Properties> properties) {
+            return get(getContext(), getElementType(), getNumRows(), getNumCols(), getSparsity(), getRepresentation(), getSymmetry(), properties);
+        }
+
+        ::mlir::daphne::MatrixType test(bool symmetry, std::shared_ptr<Properties> properties) {
+            return get(getContext(), getElementType(), getNumRows(), getNumCols(), getSparsity(), getRepresentation(), symmetry, properties);
+        }
+
+
         // The following methods return a MatrixType preserving the specified
         // properties and resetting all others.
 
@@ -99,7 +109,7 @@ def Matrix : Daphne_Type<"Matrix"> {
         }
 
         ::mlir::daphne::MatrixType withSameElementTypeAndRepr() {
-            return get(getContext(), getElementType(), -1, -1, -1.0, getRepresentation(), false, *(new Properties()));
+            return get(getContext(), getElementType(), -1, -1, -1.0, getRepresentation(), getSymmetry(), getProperties());
         }
 
         /**

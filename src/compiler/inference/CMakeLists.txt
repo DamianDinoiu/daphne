@@ -17,6 +17,7 @@ add_mlir_dialect_library(MLIRDaphneInference
     InferencePass.cpp
     SelectMatrixRepresentationsPass.cpp
     TypeInferenceUtils.cpp
+    InsertPropertiesPass.cpp
 
     DEPENDS
     MLIRDaphne

@@ -66,28 +66,12 @@ struct EwUnaryMat<DenseMatrix<VT>, DenseMatrix<VT>> {
         
         EwUnaryScaFuncPtr<VT, VT> func = getEwUnaryScaFuncPtr<VT, VT>(opCode);
         
-        // if (arg->getSymmetry()) {
-        //     for(size_t r = 0; r < numRows; r++) {
-        //         for(size_t c = r; c < numCols; c++) {
-        //             // valuesRes[c] = 10 * valuesArg[c];
-        //             auto value = valuesArg[c] * 10;
-        //             (valuesRes + arg->getRowSkip() * r)[c] = value;
-        //             (valuesRes + arg->getRowSkip() * c)[r] = value;
-        //         }
-        //         valuesArg += arg->getRowSkip();
-        //     }    
-        // } else {
-
-        //     for(size_t r = 0; r < numRows; r++) {
-        //         for(size_t c = 0; c < numCols; c++)
-        //             valuesRes[c] = 2 * valuesArg[c];
-        //         valuesArg += arg->getRowSkip();
-        //         valuesRes += res->getRowSkip();
-        //     }
-
-        // }
-
-        
+        for(size_t r = 0; r < numRows; r++) {
+            for(size_t c = 0; c < numCols; c++)
+                valuesRes[c] = func(valuesArg[c], ctx);
+            valuesArg += arg->getRowSkip();
+            valuesRes += res->getRowSkip();
+        }
     }
 };
 

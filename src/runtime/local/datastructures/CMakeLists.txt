@@ -23,7 +23,8 @@ add_library(DataStructures
         MetaDataObject.h
         MetaDataObject.cpp
         ValueTypeUtils.cpp
-        Traits.h)
+        Traits.h
+        Properties.h)
 
 target_link_libraries(DataStructures PUBLIC Proto)
 if(USE_CUDA AND CMAKE_CUDA_COMPILER)

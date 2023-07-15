@@ -55,7 +55,6 @@ class DenseMatrix : public Matrix<ValueType>
     size_t lastAppendedRowIdx;
     size_t lastAppendedColIdx;
     bool symmetric = false;
-    Traits* traits = new Traits();
 
     
     // Grant DataObjectFactory access to the private constructors and
@@ -221,10 +220,6 @@ public:
 
     bool getSymmetry() const {
         return symmetric;
-    }
-
-    Traits* getTraits() const {
-        return traits;
     }
 
     void setSymmetr(bool symmetry) {

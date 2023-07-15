@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-#include "InferenceProperties.h"
 #include <compiler/utils/CompilerUtils.h>
 #include <filesystem>
 #include <ir/daphneir/Daphne.h>
 #include <ir/daphneir/DaphneOpsEnums.cpp.inc>
+#include <memory>
+#include <iostream>
+#include <cstdlib>
+#include <time.h>
 #define GET_OP_CLASSES
 #include <ir/daphneir/DaphneOps.cpp.inc>
 #define GET_TYPEDEF_CLASSES
@@ -84,7 +87,7 @@ mlir::Type mlir::daphne::DaphneDialect::parseType(mlir::DialectAsmParser &parser
         ssize_t numCols = -1;
         double sparsity = -1.0;
         bool symmetry = false;
-        Properties properties = *(new Properties);
+        std::shared_ptr<Properties> properties = std::shared_ptr<Properties>(new Properties());
         MatrixRepresentation representation = MatrixRepresentation::Default; // default is dense
         mlir::Type elementType;
         if (parser.parseLess()) {
@@ -214,16 +217,12 @@ void mlir::daphne::DaphneDialect::printType(mlir::Type type,
             os << ":sp[" << sparsity << ']';
         }
 
-        if (symmetry) {
-            os << ":sym[" << symmetry << ']';
-        }
+        // if (symmetry)
+        //     os << ":symm[" << symmetry << ']';
 
-        // if (properties != -1) {
-        //     os << ":properties[" << properties << ']';
-        // }
-        // std::shared_ptr<int[]> vals = std::shared_ptr<int[]>(new int[10]);
-        // ssize_t test = reinterpret_cast<ssize_t>(vals.get());
-        // os << test << "\n";
+
+        if (properties->symmetry)
+            os << ":properties[" << properties.get() << ']';
 
         if (representation != MatrixRepresentation::Default) {
             os << ":rep[" << matrixRepresentationToString(representation) << ']';
@@ -309,12 +308,12 @@ namespace mlir::daphne {
                               double sparsity,
                               MatrixRepresentation representation,
                               bool symmetry,
-                              Properties properties)
+                              std::shared_ptr<Properties> properties)
                 : elementType(elementType), numRows(numRows), numCols(numCols), sparsity(sparsity),
                   representation(representation), symmetry(symmetry), properties(properties) {}
 
             /// The hash key is a tuple of the parameter types.
-            using KeyTy = std::tuple<::mlir::Type, ssize_t, ssize_t, double, MatrixRepresentation, bool, Properties>;
+            using KeyTy = std::tuple<::mlir::Type, ssize_t, ssize_t, double, MatrixRepresentation, bool, std::shared_ptr<Properties>>;
             bool operator==(const KeyTy &tblgenKey) const {
                 if(!(elementType == std::get<0>(tblgenKey)))
                     return false;
@@ -327,19 +326,20 @@ namespace mlir::daphne {
                 if(representation != std::get<4>(tblgenKey))
                     return false;
                 if(sparsity != std::get<5>(tblgenKey))
-                    return true;
-                // if(properties != std::get<6>(tblgenKey))
-                //     return true;
+                    return false;
+                if(properties != std::get<6>(tblgenKey))
+                     return false;
             }
             static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
                 auto float_hashable = static_cast<ssize_t>(std::get<3>(tblgenKey) / epsilon);
+                auto propertiesPointer = std::get<6>(tblgenKey).get();
                 return ::llvm::hash_combine(std::get<0>(tblgenKey),
                     std::get<1>(tblgenKey),
                     std::get<2>(tblgenKey),
                     float_hashable,
                     std::get<4>(tblgenKey),
                     std::get<5>(tblgenKey),
-                    0);
+                    propertiesPointer);
             }
 
             /// Define a construction method for creating a new instance of this
@@ -363,7 +363,7 @@ namespace mlir::daphne {
             double sparsity;
             MatrixRepresentation representation;
             bool symmetry;
-            Properties properties;
+            std::shared_ptr<Properties> properties;
         };
     }
     ::mlir::Type MatrixType::getElementType() const { return getImpl()->elementType; }
@@ -372,7 +372,7 @@ namespace mlir::daphne {
     double MatrixType::getSparsity() const { return getImpl()->sparsity; }
     MatrixRepresentation MatrixType::getRepresentation() const { return getImpl()->representation; }
     bool MatrixType::getSymmetry() const { return getImpl()->symmetry; }
-    Properties MatrixType::getProperties() const { return getImpl()->properties; }
+    std::shared_ptr<Properties> MatrixType::getProperties() const { return getImpl()->properties; }
 
 }
 
@@ -385,7 +385,7 @@ mlir::OpFoldResult mlir::daphne::ConstantOp::fold(FoldAdaptor adaptor)
 ::mlir::LogicalResult mlir::daphne::MatrixType::verify(
         ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
         Type elementType,
-        ssize_t numRows, ssize_t numCols, double sparsity, MatrixRepresentation rep, bool symmetry, Properties properties
+        ssize_t numRows, ssize_t numCols, double sparsity, MatrixRepresentation rep, bool symmetry, std::shared_ptr<Properties> properties
 )
 {
     if (
@@ -1148,7 +1148,7 @@ mlir::LogicalResult mlir::daphne::EwAddOp::canonicalize(
             rhs = rewriter.create<mlir::daphne::CastOp>(op.getLoc(), strTy, rhs);
         rewriter.replaceOpWithNewOp<mlir::daphne::ConcatOp>(op, strTy, lhs, rhs);
         return mlir::success();
-    }
+    } 
     return mlir::failure();
 }
 
@@ -1157,18 +1157,12 @@ mlir::LogicalResult mlir::daphne::TransposeOp::canonicalize(
 ) {
 
     auto argTyp = op.getArg().getType();
-    // auto parentOp = op.getParentOp();	
 
     if(auto mt = argTyp.dyn_cast<daphne::MatrixType>()) {
 
-        if (mt.getSymmetry()) {
+        if (true) {
              
-             auto properties = new Properties;
-             properties->value = mt.getProperties().value;
-             ssize_t propertiesPointer = reinterpret_cast<ssize_t>(properties);
-             auto insertProperties = static_cast<mlir::Value>(rewriter.create<mlir::daphne::ConstantOp>(op.getLoc(), propertiesPointer));
-             auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(op.getLoc(), op.getArg().getType(), op.getArg(), insertProperties);
-            rewriter.replaceOpWithNewOp<mlir::daphne::EwSqrtOp>(op, newOp.getArg().getType(), newOp.getRes());
+            //TODAMIAN - do the logic if the operand is symmetric remove operation
             return mlir::success();
         }
 
@@ -1184,15 +1178,9 @@ mlir::LogicalResult mlir::daphne::EwSqrtOp::canonicalize(
 
     if(auto mt = argTyp.dyn_cast<daphne::MatrixType>()) {
 
-        if (mt.getSymmetry()) {
+        if (true) {
 
-            // mlir::Value test = static_cast<mlir::Value>(
-            //     rewriter.create<mlir::daphne::ConstantOp>(
-            //         op.getLoc(), static_cast<int64_t>(1)
-            //     ));
-
-            // auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(op.getLoc(), op.getArg().getType(), op.getArg(), test);
-            // op.setOperand(newOp.getRes());
+            //TODAMIAN - do we still need this here?
             return mlir::success();
         }
 

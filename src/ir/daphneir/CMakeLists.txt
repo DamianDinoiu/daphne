@@ -47,7 +47,6 @@ add_mlir_dialect_library(MLIRDaphne
     DaphneVectorizableOpInterface.cpp
     DaphneInferSymmetryOpInterface.cpp
     DaphneInferMinMaxOpInterface.cpp
-    InferenceProperties.cpp
 
     DEPENDS
     MLIRDaphneOpsIncGen
