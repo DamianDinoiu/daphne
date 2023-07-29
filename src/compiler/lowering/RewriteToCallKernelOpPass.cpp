@@ -144,77 +144,6 @@ namespace
 
         LogicalResult matchAndRewrite(Operation *op, PatternRewriter &rewriter) const override {
             Location loc = op->getLoc();
-            std::stringstream test;
-
-
-       
-
-            // if(!llvm::isa<daphne::InsertTraitsOp>(op)) {
-            //     for(ssize_t i = 0; i < op->getResultTypes().size(); i++) {
-
-            //         if (op->getResultTypes()[i].isa<mlir::daphne::MatrixType>()) {
-            //             Value rv = op->getResult(i);
-            //             const Type rt = rv.getType();
-            //             auto mt = rt.dyn_cast<daphne::MatrixType>();
-
-            //             if(mt) {
-                    
-            //                 test << mt.getProperties().get() << " ";
-
-            //                 auto pointerValue = static_cast<mlir::Value>(
-            //                     rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), reinterpret_cast<ssize_t>(mt.getProperties().get())));
-
-            //                 auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(
-            //                      op->getLoc(),
-            //                      op->getOperand(0).getType(),
-            //                      op->getOperand(0),
-            //                      pointerValue
-            //                 );
-
-            //                 op->moveBefore(newOp);
-            //                 // kernel.getResults()[i] = newOp.getRes();
-
-            //             }
-            //         }
-            //     }
-            // }
-
-
-            // Operand solution --> not working because the inserted op is not converted to the kernels resulting in
-            // null reference to the operands 
-            // if(!llvm::isa<daphne::InsertTraitsOp>(op)) {
-            //     std::vector<Value> testOperands;
-            //     for(ssize_t i = 0; i < op->getNumOperands (); i++) {
-
-            //         auto operand = op->getOperand(i);
-            //         auto operandType = operand.getType();
-
-            //         if (operandType.isa<mlir::daphne::MatrixType>()) {
-            //             auto mt =operandType.dyn_cast<daphne::MatrixType>();
-
-            //             if(mt) {
-                    
-            //                 test << mt.getProperties().get() << " ";
-
-
-            //                 auto constantOp = rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), reinterpret_cast<ssize_t>(mt.getProperties().get()));
-            //                 auto pointerValue = static_cast<mlir::Value>(constantOp);
-
-            //                 auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(
-            //                     op->getLoc(),
-            //                     operandType,
-            //                     operand,
-            //                     pointerValue
-            //                 );
-
-                            
-            //                 testOperands.push_back(newOp.getRes());
-
-            //             }
-            //         }
-            //     }
-            //     // op->setOperands(testOperands);
-            // }
 
             // Determine the name of the kernel function to call by convention
             // based on the DaphneIR operation and the types of its results and
@@ -230,7 +159,6 @@ namespace
             }
 
             callee << '_' << op->getName().stripDialect().data();
-        
 
 
             // TODO Don't enumerate all ops, decide based on a trait.
@@ -446,61 +374,8 @@ namespace
                     callee.str(),
                     newOperands,
                     op->getResultTypes()
-                    ); 
-
-
-       
-
-            // TODO CREATE AN INSERTPROP
-            // RPLACE KERNEL.GETrESULTS BY INSERT TRAIT OP RESULTS ONE BY ONE 
-            // BE CAREFULL NOT TO DO THE SAME WITH INSERT TRAITS OP AGAIN LOOK AT ISA LINE 369
-
-            std::cout<< test.str();
-
-                  std::vector<Value> newResults;
-            
-            
-            // if (!llvm::isa<daphne::InsertTraitsOp>(op)) {
-            
-            //     auto results = kernel.getResults();
-
-            //     for (ssize_t i = 0; i < results.size(); i++) {
-
-            //         auto result = results[i];
-            //         auto resultType = result.getType();
-
-            //         if (resultType.isa<mlir::daphne::MatrixType>()) {
-
-            //            auto mt = resultType.dyn_cast<daphne::MatrixType>();
-            //            auto properties = mt.getProperties();
-
-            //            if (properties->symmetry) {
-
-            //                 // rewriter.setInsertionPointAfter(op);
-            //                 auto propertiesPointer = &properties;
-            //                 auto constantOp = rewriter.create<mlir::daphne::ConstantOp>(kernel.getLoc(), reinterpret_cast<ssize_t>(properties.get()));
-            //                 auto pointerValue = static_cast<mlir::Value>(constantOp);
-
-            //                 auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(
-            //                     kernel.getLoc(),
-            //                     resultType,
-            //                     result,
-            //                     pointerValue
-            //                 );
-
-            //                 newResults.push_back(newOp.getRes());
-            //             }
-            //         }
-            //     }
-            // }
-
-            if (newResults.size() != 0) {
-                rewriter.replaceOp(op, newResults);
-            } else {
-                rewriter.replaceOp(op, kernel.getResults());
-            }
-
-            
+                    );
+            rewriter.replaceOp(op, kernel.getResults());
             return success();
         }
     };
@@ -589,8 +464,6 @@ namespace
             std::vector<Value> newOperands = {
                 cvpInputs, coNumInputs, cvpOutRows, cvpOutCols, cvpSplits, cvpCombines, op.getIr(), dctx
             };
-
-
             auto cko = rewriter.replaceOpWithNewOp<daphne::CallKernelOp>(
                     op.getOperation(),
                     callee.str(),
