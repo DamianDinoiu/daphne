@@ -23,8 +23,8 @@
 
 #include <runtime/distributed/proto/worker.pb.h>
 #include <runtime/distributed/proto/worker.grpc.pb.h>
-#include <runtime/distributed/proto/ProtoDataConverter.h>
 #include <runtime/distributed/proto/DistributedGRPCCaller.h>
+#include <runtime/distributed/coordinator/scheduling/LoadPartitioningDistributed.h>
 #ifdef USE_MPI
     #include <runtime/distributed/worker/MPIHelper.h>
 #endif
@@ -75,89 +75,27 @@ struct DistributedCompute<ALLOCATION_TYPE::DIST_MPI, DTRes, const Structure>
                       VectorCombine *vectorCombine,                      
                       DCTX(dctx))
     {
-        int worldSize= MPIHelper::getCommSize()-1; // exclude coordinator
-        // Initialize Distributed index array, needed for results
-        for (size_t i = 0; i < numOutputs; i++)
-        {
-            size_t partitionSize=0, remainingSize=0, rowCount=0,colCount=0; // startRow=0, startCol=0;
-            auto combineType = vectorCombine[i];
-            remainingSize = (combineType==VectorCombine::ROWS)? (*res[i])->getNumRows(): (*res[i])->getNumCols();
-            partitionSize = (combineType==VectorCombine::ROWS)? (*res[i])->getNumRows()/worldSize: (*res[i])->getNumCols()/worldSize;
-            if(partitionSize<1)
-            {
-                partitionSize = 1;
-                worldSize= (combineType==VectorCombine::ROWS)? (*res[i])->getNumRows() : (*res[i])->getNumCols();
-            }
-            for(int rank=0; rank<worldSize;rank++) // we currently exclude the coordinator
-            {      
-                DistributedData data;
-                data.vectorCombine = combineType;
-                data.isPlacedAtWorker = true;
-                Range range;
-                if(rank==worldSize-1 ){
-                    rowCount= remainingSize;
-                    colCount = remainingSize;
-                }
-                else  {
-                    rowCount=partitionSize;
-                    colCount=partitionSize;
-                }                                
-                if (combineType== VectorCombine::ROWS) {
-                    data.ix  = DistributedIndex(rank, 0);              
-                    colCount=(*res[i])->getNumCols();       
-                    range.r_start = data.ix.getRow() * partitionSize;
-                    range.r_len = rowCount;
-                    range.c_start = 0;
-                    range.c_len = colCount;
-                }
-                if (vectorCombine[i] == VectorCombine::COLS) {
-                    data.ix  = DistributedIndex(0, rank);  
-                    rowCount= (*res[i])->getNumRows();
-                    range.r_start = 0; 
-                    range.r_len = rowCount; 
-                    range.c_start = data.ix.getCol() * partitionSize;
-                    range.c_len = colCount;
-                }
-               // std::cout<<"rank "<< rank+1 <<" Range rows from "<< range.r_start <<" to " <<( range.r_len + range.r_start)<< " cols from " <<range.c_start <<" to " <<( range.c_len + range.c_start)<<std::endl;
-                remainingSize-=partitionSize;
-                std::string addr= std::to_string(rank+1);
-                // If dp already exists for this worker, update the range and data
-                if (auto dp = (*res[i])->getMetaDataObject()->getDataPlacementByLocation(addr)) { 
-                    (*res[i])->getMetaDataObject()->updateRangeDataPlacementByID(dp->dp_id, &range);
-                    dynamic_cast<AllocationDescriptorMPI&>(*(dp->allocation)).updateDistributedData(data);                    
-                }
-                else { // else create new dp entry   
-                    AllocationDescriptorMPI allocationDescriptor(
-                                            rank+1,
-                                            dctx,
-                                            data);                                    
-                    ((*res[i]))->getMetaDataObject()->addDataPlacement(&allocationDescriptor, &range);                    
-                } 
-            }
-        }
-        void *taskToSend;
-        size_t messageLengths[worldSize]; 
+        int worldSize = MPIHelper::getCommSize() - 1; // exclude coordinator
+
+        LoadPartitioningDistributed<DTRes, AllocationDescriptorMPI>::SetOutputsMetadata(res, numOutputs, vectorCombine, dctx);
+        
+        std::vector<char> taskBuffer;
         for (int rank=0;rank<worldSize;rank++) // we currently exclude the coordinator
         {
-
-            distributed::Task task;
+            MPIHelper::Task task;
             std::string addr= std::to_string(rank+1);
-            for (size_t i = 0; i < numOutputs; i++)
+            for (size_t i = 0; i < numInputs; i++)
             {
                 auto dp = args[i]->getMetaDataObject()->getDataPlacementByLocation(addr);
                 auto distrData = dynamic_cast<AllocationDescriptorMPI&>(*(dp->allocation)).getDistributedData();
-                distributed::StoredData protoData;
-                //std::cout<<"identifier " << distrData.identifier<<std::endl;
-                protoData.set_identifier(distrData.identifier); 
-                protoData.set_num_cols(distrData.numCols);
-                protoData.set_num_rows(distrData.numRows);
-
-                *task.add_inputs()->mutable_stored() = protoData;
+                
+                MPIHelper::StoredInfo storedData({distrData.identifier, distrData.numRows, distrData.numCols});                
+                task.inputs.push_back(storedData);
             }
-            task.set_mlir_code(mlirCode);
-            MPISerializer::serializeTask(&taskToSend, &messageLengths[rank], &task);
-            MPIHelper::distributeTask(messageLengths[rank], taskToSend,rank+1);
-            free(taskToSend);
+            task.mlir_code = mlirCode;
+            task.serialize(taskBuffer);
+            auto len = task.sizeInBytes();
+            MPIHelper::distributeTask(len, taskBuffer.data(),rank+1);            
         }
 
     }
@@ -187,68 +125,13 @@ struct DistributedCompute<ALLOCATION_TYPE::DIST_GRPC, DTRes, const Structure>
             std::string addr;
         };                
         DistributedGRPCCaller<StoredInfo, distributed::Task, distributed::ComputeResult> caller;
-
-        // Initialize Distributed index array, needed for results
-        std::vector<DistributedIndex> ix(numOutputs, DistributedIndex(0, 0));
+        
+        // Set output meta data
+        LoadPartitioningDistributed<DTRes, AllocationDescriptorGRPC>::SetOutputsMetadata(res, numOutputs, vectorCombine, dctx);
         
         // Iterate over workers
         // Pass all the nessecary arguments for the pipeline
         for (auto addr : workers) {
-            // Set output meta data
-            for (size_t i = 0; i < numOutputs; i++){                 
-                // Get Result ranges
-                auto combineType = vectorCombine[i];
-                auto workersSize = workers.size();
-                size_t k = 0, m = 0;                
-                if (combineType == VectorCombine::ROWS) {
-                    k = (*res[i])->getNumRows() / workersSize;
-                    m = (*res[i])->getNumRows() % workersSize;
-                }
-                else if (combineType == VectorCombine::COLS){
-                    k = (*res[i])->getNumCols() / workersSize;
-                    m = (*res[i])->getNumCols() % workersSize;
-                }
-                else
-                    assert(!"Only Rows/Cols combineType supported atm");
-
-                DistributedData data;
-                data.ix = ix[i];
-                data.vectorCombine = vectorCombine[i];
-                data.isPlacedAtWorker = true;
-                                
-                // Update distributed index for next iteration
-                // and set ranges for objmetadata
-                Range range;
-                if (vectorCombine[i] == VectorCombine::ROWS) {
-                    ix[i] = DistributedIndex(ix[i].getRow() + 1, ix[i].getCol());            
-                    
-                    range.r_start = data.ix.getRow() * k + std::min(data.ix.getRow(), m);
-                    range.r_len = ((data.ix.getRow() + 1) * k + std::min((data.ix.getRow() + 1), m)) - range.r_start;
-                    range.c_start = 0;
-                    range.c_len = (*res[i])->getNumCols();
-                }
-                if (vectorCombine[i] == VectorCombine::COLS) {
-                    ix[i] = DistributedIndex(ix[i].getRow(), ix[i].getCol() + 1);
-                    
-                    range.r_start = 0; 
-                    range.r_len = (*res[i])->getNumRows(); 
-                    range.c_start = data.ix.getCol() * k + std::min(data.ix.getCol(), m);
-                    range.c_len = ((data.ix.getCol() + 1) * k + std::min((data.ix.getCol() + 1), m)) - range.c_start;
-                }
-
-                // If dp already exists for this worker, update the range and data
-                if (auto dp = (*res[i])->getMetaDataObject()->getDataPlacementByLocation(addr)) { 
-                    (*res[i])->getMetaDataObject()->updateRangeDataPlacementByID(dp->dp_id, &range);
-                    dynamic_cast<AllocationDescriptorGRPC&>(*(dp->allocation)).updateDistributedData(data);                    
-                }
-                else { // else create new dp entry   
-                    AllocationDescriptorGRPC allocationDescriptor(
-                                            dctx,
-                                            addr,
-                                            data);                                    
-                    ((*res[i]))->getMetaDataObject()->addDataPlacement(&allocationDescriptor, &range);                    
-                } 
-            }
 
             distributed::Task task;
             for (size_t i = 0; i < numInputs; i++){

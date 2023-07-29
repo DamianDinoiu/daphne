@@ -63,7 +63,7 @@ def Matrix : Daphne_Type<"Matrix"> {
         // other parameters reset.
         TypeBuilder<(ins "::mlir::Type":$elementType), [{
             auto property = std::shared_ptr<Properties>(new Properties());
-            return Base::get($_ctxt, elementType, -1, -1, -1.0, MatrixRepresentation::Dense, false, property);
+            return Base::get($_ctxt, elementType, -1, -1, -1.0, MatrixRepresentation::Default, false, property);
         }]>,
     ];
 

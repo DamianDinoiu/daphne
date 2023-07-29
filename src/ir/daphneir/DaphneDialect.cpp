@@ -398,6 +398,12 @@ mlir::OpFoldResult mlir::daphne::ConstantOp::fold(FoldAdaptor adaptor)
             || elementType.isF32()
             || elementType.isF64()
             || elementType.isIndex()
+            || elementType.isInteger(1)
+            || elementType.isa<mlir::daphne::StringType>()
+            || elementType.isUnsignedInteger(64)
+            || elementType.isUnsignedInteger(32)
+            || elementType.isSignedInteger(32)
+            || elementType.isSignedInteger(8)
         ) && (
             // Number of rows and columns are valid (-1 for unknown).
             numRows >= -1 && numCols >= -1
@@ -995,6 +1001,7 @@ mlir::LogicalResult mlir::daphne::MatMulOp::canonicalize(
     }
 
 #if 0
+    // TODO Adapt PhyOperatorSelectionPass once this code is turned on again.
     if(lhsTransposeOp) {
         lhs = lhsTransposeOp.getArg();
         ta = !ta;
@@ -1122,12 +1129,15 @@ struct SimplifyDistributeRead : public mlir::OpRewritePattern<mlir::daphne::Dist
 };
 
 /**
- * @brief Turns an addition into a concatenation, if one of the inputs is a
- * string.
+ * @brief Replaces (1) `a + b` by `a concat b`, if `a` or `b` is a string,
+ * and (2) `a + X` by `X + a` (`a` scalar, `X` matrix/frame).
  * 
- * This is important, since we use the '+'-operator for both addition and
+ * (1) is important, since we use the `+`-operator for both addition and
  * string concatenation in DaphneDSL, while the types of the operands might be
  * known only after type inference.
+ * 
+ * (2) is important, since our kernels for elementwise binary operations only support
+ * scalars as the right-hand-side operand so far (see #203).
  * 
  * @param op
  * @param rewriter
@@ -1138,6 +1148,7 @@ mlir::LogicalResult mlir::daphne::EwAddOp::canonicalize(
 ) {
     mlir::Value lhs = op.getLhs();
     mlir::Value rhs = op.getRhs();
+
     const bool lhsIsStr = lhs.getType().isa<mlir::daphne::StringType>();
     const bool rhsIsStr = rhs.getType().isa<mlir::daphne::StringType>();
     if(lhsIsStr || rhsIsStr) {
@@ -1185,6 +1196,103 @@ mlir::LogicalResult mlir::daphne::EwSqrtOp::canonicalize(
         }
 
     }
+}
+
+/**
+ * @brief Replaces `a - X` by `(X * -1) + a` (`a` scalar, `X` matrix/frame).
+ * 
+ * This is important, since our kernels for elementwise binary operations only support
+ * scalars as the right-hand-side operand so far (see #203).
+ * 
+ * As a downside, an additional operation and intermediate result is introduced.
+ * 
+ * @param op
+ * @param rewriter
+ * @return 
+ */
+mlir::LogicalResult mlir::daphne::EwSubOp::canonicalize(
+        mlir::daphne::EwSubOp op, PatternRewriter &rewriter
+) {
+    mlir::Value lhs = op.getLhs();
+    mlir::Value rhs = op.getRhs();
+    const bool lhsIsSca = !lhs.getType().isa<mlir::daphne::MatrixType, mlir::daphne::FrameType>();
+    const bool rhsIsSca = !rhs.getType().isa<mlir::daphne::MatrixType, mlir::daphne::FrameType>();
+    if(lhsIsSca && !rhsIsSca) {
+        rewriter.replaceOpWithNewOp<mlir::daphne::EwAddOp>(
+                op,
+                op.getResult().getType(),
+                rewriter.create<mlir::daphne::EwMulOp>(
+                        op->getLoc(),
+                        mlir::daphne::UnknownType::get(op->getContext()), // to be inferred
+                        rhs,
+                        rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), int64_t(-1))
+                ),
+                lhs
+        );
+        return mlir::success();
+    }
+    return mlir::failure();
+}
+
+/**
+ * @brief Replaces `a * X` by `X * a` (`a` scalar, `X` matrix/frame).
+ * 
+ * This is important, since our kernels for elementwise binary operations only support
+ * scalars as the right-hand-side operand so far (see #203).
+ * 
+ * @param op
+ * @param rewriter
+ * @return 
+ */
+mlir::LogicalResult mlir::daphne::EwMulOp::canonicalize(
+        mlir::daphne::EwMulOp op, PatternRewriter &rewriter
+) {
+    mlir::Value lhs = op.getLhs();
+    mlir::Value rhs = op.getRhs();
+    const bool lhsIsSca = !lhs.getType().isa<mlir::daphne::MatrixType, mlir::daphne::FrameType>();
+    const bool rhsIsSca = !rhs.getType().isa<mlir::daphne::MatrixType, mlir::daphne::FrameType>();
+    if(lhsIsSca && !rhsIsSca) {
+        rewriter.replaceOpWithNewOp<mlir::daphne::EwMulOp>(op, op.getResult().getType(), rhs, lhs);
+        return mlir::success();
+    }
+    return mlir::failure();
+}
+
+/**
+ * @brief Replaces `a / X` by `(X ^ -1) * a` (`a` scalar, `X` matrix/frame),
+ * if `X` has a floating-point value type.
+ * 
+ * This is important, since our kernels for elementwise binary operations only support
+ * scalars as the right-hand-side operand so far (see #203).
+ * 
+ * As a downside, an additional operation and intermediate result is introduced.
+ * 
+ * @param op
+ * @param rewriter
+ * @return 
+ */
+mlir::LogicalResult mlir::daphne::EwDivOp::canonicalize(
+        mlir::daphne::EwDivOp op, PatternRewriter &rewriter
+) {
+    mlir::Value lhs = op.getLhs();
+    mlir::Value rhs = op.getRhs();
+    const bool lhsIsSca = !lhs.getType().isa<mlir::daphne::MatrixType, mlir::daphne::FrameType>();
+    const bool rhsIsSca = !rhs.getType().isa<mlir::daphne::MatrixType, mlir::daphne::FrameType>();
+    const bool rhsIsFP = CompilerUtils::getValueType(rhs.getType()).isa<mlir::FloatType>();
+    if(lhsIsSca && !rhsIsSca && rhsIsFP) {
+        rewriter.replaceOpWithNewOp<mlir::daphne::EwMulOp>(
+                op,
+                op.getResult().getType(),
+                rewriter.create<mlir::daphne::EwPowOp>(
+                        op->getLoc(),
+                        mlir::daphne::UnknownType::get(op->getContext()), // to be inferred
+                        rhs,
+                        rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), double(-1))
+                ),
+                lhs
+        );
+        return mlir::success();
+    }
     return mlir::failure();
 }
 
@@ -1225,12 +1333,20 @@ mlir::LogicalResult mlir::daphne::CondOp::canonicalize(mlir::daphne::CondOp op,
             if(elseFrmTy.getLabels() != nullptr)
                 elseVal = rewriter.create<mlir::daphne::CastOp>(loc, elseFrmTy.withLabels(nullptr), elseVal);
         
-        if(thenVal.getType() != elseVal.getType())
-            // TODO We could try to cast the types.
-            throw std::runtime_error(
-                    "the then/else-values of CondOp must have the same type if "
-                    "the condition is a scalar"
-            );
+        // Check if the types of the then-value and the else-value are the same.
+        if(thenVal.getType() != elseVal.getType()) {
+            if(thenVal.getType().isa<daphne::UnknownType>() || elseVal.getType().isa<daphne::UnknownType>())
+                // If one of them is unknown, we abort the rewrite (but this is not an error).
+                // The type may become known later, this rewrite will be triggered again.
+                return mlir::failure();
+            else
+                // If both types are known, but different, this is an error.
+                // TODO We could try to cast the types.
+                throw std::runtime_error(
+                        "the then/else-values of CondOp must have the same type if "
+                        "the condition is a scalar 1"
+                );
+        }
             
         {
             // Save the insertion point (automatically restored at the end of the block).

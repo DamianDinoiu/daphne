@@ -92,7 +92,7 @@ namespace
             }
             if(auto concreteOp = llvm::dyn_cast<daphne::GroupOp>(op)) {
                 auto idxAndLen = concreteOp.getODSOperandIndexAndLength(index);
-                static bool isVariadic[] = {false, true, true, true};
+                static bool isVariadic[] = {false, true, true};
                 return std::make_tuple(
                         idxAndLen.first,
                         idxAndLen.second,
@@ -148,6 +148,8 @@ namespace
             Location loc = op->getLoc();
             std::stringstream test;
 
+
+       
 
             // if(!llvm::isa<daphne::InsertTraitsOp>(op)) {
             //     for(ssize_t i = 0; i < op->getResultTypes().size(); i++) {
@@ -284,8 +286,18 @@ namespace
                     const unsigned idx = std::get<0>(odsOpInfo);
                     const unsigned len = std::get<1>(odsOpInfo);
                     const bool isVariadic = std::get<2>(odsOpInfo);
+                    
+                    // TODO The group operation currently expects at least four inputs due to the
+                    // expectation of a aggregation. To make the group operation possible without aggregations,
+                    // we have to use this workaround to create the correct name and skip the creation
+                    // of the variadic pack ops. Should be changed when reworking the lowering to kernels.
+                    if(llvm::dyn_cast<daphne::GroupOp>(op) && idx >= operandTypes.size()) {
+                        callee << "__char_variadic__size_t";
+                        continue;
+                    } else {
+                        callee << "__" << CompilerUtils::mlirTypeToCppTypeName(operandTypes[idx], generalizeInputTypes);
+                    }
 
-                    callee << "__" << CompilerUtils::mlirTypeToCppTypeName(operandTypes[idx], generalizeInputTypes);
                     if(isVariadic) {
                         // Variadic operand.
                         callee << "_variadic__size_t";
@@ -447,13 +459,59 @@ namespace
                     op->getResultTypes()
                     ); 
 
+
+       
+
             // TODO CREATE AN INSERTPROP
             // RPLACE KERNEL.GETrESULTS BY INSERT TRAIT OP RESULTS ONE BY ONE 
             // BE CAREFULL NOT TO DO THE SAME WITH INSERT TRAITS OP AGAIN LOOK AT ISA LINE 369
 
             std::cout<< test.str();
 
-            rewriter.replaceOp(op, kernel.getResults());
+                  std::vector<Value> newResults;
+            
+            
+            // if (!llvm::isa<daphne::InsertTraitsOp>(op)) {
+            
+            //     auto results = kernel.getResults();
+
+            //     for (ssize_t i = 0; i < results.size(); i++) {
+
+            //         auto result = results[i];
+            //         auto resultType = result.getType();
+
+            //         if (resultType.isa<mlir::daphne::MatrixType>()) {
+
+            //            auto mt = resultType.dyn_cast<daphne::MatrixType>();
+            //            auto properties = mt.getProperties();
+
+            //            if (properties->symmetry) {
+
+            //                 // rewriter.setInsertionPointAfter(op);
+            //                 auto propertiesPointer = &properties;
+            //                 auto constantOp = rewriter.create<mlir::daphne::ConstantOp>(kernel.getLoc(), reinterpret_cast<ssize_t>(properties.get()));
+            //                 auto pointerValue = static_cast<mlir::Value>(constantOp);
+
+            //                 auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(
+            //                     kernel.getLoc(),
+            //                     resultType,
+            //                     result,
+            //                     pointerValue
+            //                 );
+
+            //                 newResults.push_back(newOp.getRes());
+            //             }
+            //         }
+            //     }
+            // }
+
+            if (newResults.size() != 0) {
+                rewriter.replaceOp(op, newResults);
+            } else {
+                rewriter.replaceOp(op, kernel.getResults());
+            }
+
+            
             return success();
         }
     };

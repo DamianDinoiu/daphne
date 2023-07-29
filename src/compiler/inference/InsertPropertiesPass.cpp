@@ -18,11 +18,75 @@
 #include <ir/daphneir/Daphne.h>
 #include <ir/daphneir/Passes.h>
 
+
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Transforms/DialectConversion.h"
+#include "mlir/IR/IRMapping.h"
+
 #include <mlir/Pass/Pass.h>
 
 #include <iostream>
 
 using namespace mlir;
+
+namespace {
+
+        class PropertiesInsertion : public RewritePattern {
+
+
+            public:
+
+
+                 PropertiesInsertion(MLIRContext * mctx, PatternBenefit benefit = 1)
+                    : RewritePattern(Pattern::MatchAnyOpTypeTag(), benefit, mctx)
+                    {
+                    }
+
+        LogicalResult matchAndRewrite(Operation *op,
+                        PatternRewriter &rewriter) const override
+        {
+
+            std::cout << "ceva";
+            std::vector<Value> newResults;
+
+
+            auto results = op->getResults();
+
+            for (ssize_t i = 0; i < op->getNumResults(); i++) {
+
+                auto result = op->getResult(i);
+                auto resultType = result.getType();
+
+                if (resultType.isa<mlir::daphne::MatrixType>()) {
+
+                    auto mt = resultType.dyn_cast<daphne::MatrixType>();
+                    auto properties = mt.getProperties();
+
+                    if (properties->symmetry) {
+
+                        rewriter.setInsertionPointAfter(op);
+                        auto propertiesPointer = &properties;
+                        auto constantOp = rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), reinterpret_cast<ssize_t>(properties.get()));
+                        auto pointerValue = static_cast<mlir::Value>(constantOp);
+
+                        auto newOp = rewriter.create<mlir::daphne::InsertTraitsOp>(
+                            op->getLoc(),
+                            resultType,
+                            result,
+                            pointerValue
+                        );
+
+                        newResults.push_back(newOp.getRes());
+
+                    }
+                }
+            }
+            return success();
+        }
+    };
+}
 
 /**
  * @brief Adapts an operation's input/output types such that it can be lowered to an available pre-compiled kernel.
@@ -48,46 +112,96 @@ struct InsertPropertiesPass : public PassWrapper<InsertPropertiesPass, Operation
 
 void InsertPropertiesPass::runOnOperation()
 {
+       
+       
     func::FuncOp f = getOperation();
-    
     OpBuilder builder(f.getContext());
 
+
+    // Daphne - legal
+    // 
+    // RewritePatternSet patterns(&getContext());
+    // ConversionTarget target(getContext());
+    // target.addLegalDialect<arith::ArithDialect, LLVM::LLVMDialect, scf::SCFDialect, daphne::DaphneDialect>();
+
+    // patterns.insert<PropertiesInsertion>(&getContext());
+    // if (failed(applyPartialConversion(module, target, std::move(patterns))))
+    //     signalPassFailure();
+
+    std::cout << "ceva2";
     f.getBody().front().walk([&](Operation* op) {
         
         if(!llvm::isa<daphne::InsertTraitsOp>(op)) {
             std::vector<Value> newOperands;
+            std::vector<Value> newResults;
 
-            for(ssize_t i = 0; i < op->getNumOperands (); i++) {
+            auto results = op->getResults();
 
-                auto operand = op->getOperand(i);
-                auto operandType = operand.getType();
+            for (ssize_t i = 0; i < op->getNumResults(); i++) {
 
-                if (operandType.isa<mlir::daphne::MatrixType>()) {
-                    auto mt =operandType.dyn_cast<daphne::MatrixType>();
+                auto result = op->getResult(i);
+                auto resultType = result.getType();
 
+                if (resultType.isa<mlir::daphne::MatrixType>()) {
+
+                    auto mt = resultType.dyn_cast<daphne::MatrixType>();
                     auto properties = mt.getProperties();
 
-                    if(properties->symmetry) {
-                        builder.setInsertionPoint(op);
+                    if (properties->symmetry) {
+
+                        builder.setInsertionPointAfter(op);
                         auto propertiesPointer = &properties;
                         auto constantOp = builder.create<mlir::daphne::ConstantOp>(op->getLoc(), reinterpret_cast<ssize_t>(properties.get()));
                         auto pointerValue = static_cast<mlir::Value>(constantOp);
 
                         auto newOp = builder.create<mlir::daphne::InsertTraitsOp>(
                             op->getLoc(),
-                            operandType,
-                            operand,
+                            resultType,
+                            result,
                             pointerValue
                         );
 
-                        newOperands.push_back(newOp.getRes());
-
-                    } 
-                } else {
-                        newOperands.push_back(operand);
+                        // .push_banewResultsck(newOp.getRes());
+                        result.replaceAllUsesExcept(newOp.getRes(), {newOp});
+                    }
                 }
             }
-            op->setOperands(newOperands);
+            // auto oldValue = static_cast<mlir::Value>(op);
+            // auto 
+
+            // if (op->getResults())
+
+            // for(ssize_t i = 0; i < op->getNumOperands (); i++) {
+
+            //     auto operand = op->getOperand(i);
+            //     auto operandType = operand.getType();
+
+            //     if (operandType.isa<mlir::daphne::MatrixType>()) {
+            //         auto mt =operandType.dyn_cast<daphne::MatrixType>();
+
+            //         auto properties = mt.getProperties();
+
+            //         if(properties->symmetry) {
+            //             builder.setInsertionPointAfter(op);
+            //             auto propertiesPointer = &properties;
+            //             auto constantOp = builder.create<mlir::daphne::ConstantOp>(op->getLoc(), reinterpret_cast<ssize_t>(properties.get()));
+            //             auto pointerValue = static_cast<mlir::Value>(constantOp);
+
+            //             auto newOp = builder.create<mlir::daphne::InsertTraitsOp>(
+            //                 op->getLoc(),
+            //                 operandType,
+            //                 operand,
+            //                 pointerValue
+            //             );
+
+            //             newOperands.push_back(newOp.getRes());
+
+            //         } 
+            //     } else {
+            //             newOperands.push_back(operand);
+            //     }
+            // }
+            // op->setOperands(newOperands);
         }
     });
 }
