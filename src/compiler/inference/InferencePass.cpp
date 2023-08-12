@@ -25,6 +25,7 @@
 #include <memory>
 #include <vector>
 #include <utility>
+#include <iostream>
 
 using namespace mlir;
 
@@ -273,14 +274,28 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
 
                 if (doSymmetryInference) {
 
-                    double minMax = daphne::tryInferMinMax(op);
+                    auto minMax = daphne::tryInferMinMax(op);
+
+                    for (int i = 0; i < minMax.size(); i++)
+                        std::cout << minMax[i] << " ";
+                    std::cout << "\n";
                     
                     const size_t numRes = op->getNumResults();
 
                     for(size_t i = 0 ; i < numRes ; i++) {
                         Value rv = op->getResult(i);
                         const Type rt = rv.getType();
-                        auto ft = rt.dyn_cast<daphne::FrameType>();
+                        auto mt = rt.dyn_cast<daphne::MatrixType>();
+                        auto properties = std::make_shared<Properties>();
+                        if(mt) {
+
+                            auto oldProperties = mt.getProperties();
+                            properties->symmetry = oldProperties->symmetry;
+                            properties->minMax = minMax;
+                            
+                             rv.setType(mt.withProperties(properties));
+                        }
+                            
                     }
                 }
                 if (doFrameLabelInference) {

@@ -24,6 +24,7 @@
 #include <vector>
 #include <stdexcept>
 #include <utility>
+#include <iostream>
 
 namespace mlir::daphne {
 #include <ir/daphneir/DaphneInferMinMaxOpInterface.cpp.inc>
@@ -46,18 +47,72 @@ double getMinMaxOrUnknownFromType(Value v) {
 }
 
 // ****************************************************************************
-// Symmetry inference interface implementations
+// MIN/MAX inference interface implementations
 // ****************************************************************************
-double daphne::FillOp::inferMinMax() {
+std::vector<double> daphne::FillOp::inferMinMax() {
 
-    //TODO -> See symmetry for logic on actual implementation.
-    // Test if shared pointer is working
-    // auto matrix = get
-    // std::shared_ptr<int> castPtr = std::shared_ptr<int>(reinterpret_cast<int*>(ptrValue));
-    
-    return 10;
+    /*
+        Get the number of rows and cols and the value.
+    */
+    try {
+        auto numRows = CompilerUtils::constantOrThrow<int64_t>(getNumRows());
+        auto numCols = CompilerUtils::constantOrThrow<int64_t>(getNumCols());
+        auto value = CompilerUtils::constantOrThrow<int64_t>(getArg());
+       
+        return std::vector<double>(numCols, value);
+
+    } catch(const std::runtime_error & e) {
+            return {-1.0};
+    }
 
 }
+
+std::vector<double> daphne::SliceColOp::inferMinMax() {
+
+    Type srcTy = getSource().getType();
+    
+    auto srcMatTy = srcTy.dyn_cast<daphne::MatrixType>();
+    auto minMax = srcMatTy.getProperties()->minMax;
+
+    /*
+        Get the number of rows and cols and the value.
+    */
+    auto loIn = CompilerUtils::isConstant<int64_t>(getLowerIncl());
+    auto upEx = CompilerUtils::isConstant<int64_t>(getUpperExcl());
+
+    std::vector<double> newMinMax;
+
+    std::cout << "MinMax = " << minMax.size() << "\n";
+    std::cout << "Inerval = " << (upEx.second - loIn.second) << "\n";
+ 
+    if (minMax.size() != 0) {
+    
+        for (int i = loIn.second; i < upEx.second; i++) {
+            newMinMax.push_back(minMax[i]);
+        }
+
+        return newMinMax;
+    }
+
+    return {};
+
+}
+
+std::vector<double> daphne::ExtractColOp::inferMinMax() {
+
+    Type srcTy = getSource().getType();
+
+    auto list = getSelectedCols().getType();
+
+    auto test = llvm::dyn_cast<daphne::MatrixType>(list);
+
+    if (test)
+        std::cout << "WTTFFFFFF\n";
+
+    return {};
+
+}
+
 
 
 // ****************************************************************************
@@ -83,20 +138,20 @@ struct tryMinMaxFromIthArg {
 // Symmetry inference function
 // ****************************************************************************
 
-double daphne::tryInferMinMax(Operation *op) {
+std::vector<double> daphne::tryInferMinMax(Operation *op) {
     if(auto inferMinMaxOp = llvm::dyn_cast<daphne::InferMinMax>(op))
         // If the operation implements the symmetry inference interface,
         // we apply that.
 
         return inferMinMaxOp.inferMinMax();
     else if(op->getNumResults() == 1) {
-        return -1;
+        return {};
     } else {
         // If the operation does not implement the symmetry inference interface
         // and has zero or more than one results, we return unknown.
         std::vector<bool> symmetries;
         for(size_t i = 0; i < op->getNumResults(); i++)
             symmetries.push_back(false);
-        return -1;
+        return {};
     }
 }

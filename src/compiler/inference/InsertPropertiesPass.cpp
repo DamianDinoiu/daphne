@@ -62,7 +62,7 @@ void InsertPropertiesPass::runOnOperation()
                     auto mt = resultType.dyn_cast<daphne::MatrixType>();
                     auto properties = mt.getProperties();
 
-                    if (properties->symmetry) {
+                    if (properties->symmetry || properties->minMax.size() != 0) {
 
                         builder.setInsertionPointAfter(op);
                         auto propertiesPointer = &properties;

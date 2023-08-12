@@ -67,7 +67,7 @@ namespace mlir::daphne {
 // ****************************************************************************
 
 namespace mlir::daphne {
-double tryInferMinMax(mlir::Operation* op);
+std::vector<double> tryInferMinMax(mlir::Operation* op);
 }
 
 #endif // SRC_IR_DAPHNEIR_DAPHNEINFERMINMAXOPINTERFACE_H

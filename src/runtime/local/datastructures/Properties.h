@@ -6,7 +6,7 @@
 #include <vector>
 
 struct Properties {
-    std::vector<int> vector1;
+    std::vector<double> minMax;
     std::vector<int> vector2;
     bool symmetry;
     int value;

@@ -20,6 +20,7 @@
 #include <runtime/local/datastructures/DataObjectFactory.h>
 #include <runtime/local/datastructures/Matrix.h>
 #include <runtime/local/datastructures/ValueTypeUtils.h>
+#include <runtime/local/datastructures/Properties.h>
 
 #include <iostream>
 #include <memory>
@@ -351,6 +352,8 @@ class DenseMatrix<const char*> : public Matrix<const char*>
 
     size_t lastAppendedRowIdx;
     size_t lastAppendedColIdx;
+
+    Properties * properties;
     
     // Grant DataObjectFactory access to the private constructors and
     // destructors.

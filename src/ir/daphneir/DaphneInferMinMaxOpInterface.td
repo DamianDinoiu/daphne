@@ -29,7 +29,7 @@ def InferMinMaxOpInterface : OpInterface<"InferMinMax"> {
     let methods = [
         InterfaceMethod<
                 "Infer the min max type(s) of the output data object(s).",
-                "double", "inferMinMax", (ins)
+                "std::vector<double>", "inferMinMax", (ins)
         >
     ];
 }

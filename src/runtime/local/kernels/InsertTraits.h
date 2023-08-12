@@ -64,8 +64,12 @@ struct InsertTraits<DenseMatrix<VT>, DenseMatrix<VT>> {
     static void apply(DenseMatrix<VT> *& res, DenseMatrix<VT> * arg, int64_t * test, DCTX(ctx)) {
         
         auto properties = reinterpret_cast<Properties*>(test);
+        auto minMax = properties->minMax;
 
-        std::cout << "Insert traits runtime = " << properties->symmetry << "\n";
+        std::cout << "In kernel \n";
+        for (int i = 0; i < minMax.size(); i++)
+            std::cout << minMax[i] << " ";
+        std::cout << "\n";
         res = const_cast<DenseMatrix<VT> *>(arg);            
         res->increaseRefCounter();
 
