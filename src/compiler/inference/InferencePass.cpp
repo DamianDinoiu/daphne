@@ -276,9 +276,9 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
 
                     auto minMax = daphne::tryInferMinMax(op);
 
-                    for (int i = 0; i < minMax.size(); i++)
-                        std::cout << minMax[i] << " ";
-                    std::cout << "\n";
+                    // for (int i = 0; i < minMax.size(); i++)
+                    //     std::cout << minMax[i] << " ";
+                    // std::cout << "\n";
                     
                     const size_t numRes = op->getNumResults();
 

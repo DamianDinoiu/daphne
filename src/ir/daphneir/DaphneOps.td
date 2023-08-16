@@ -37,8 +37,6 @@ include "ir/daphneir/DaphneInferSymmetryOpInterface.td"
 include "ir/daphneir/DaphneInferSymmetryTraits.td"
 include "ir/daphneir/DaphneInferMinMaxOpInterface.td"
 include "ir/daphneir/DaphneInferMinMaxTraits.td"
-
-
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 
@@ -79,7 +77,7 @@ def Daphne_FillOp : Daphne_Op<"fill", [
     DataTypeMat, ValueTypeFromFirstArg,
     NumRowsFromIthScalar<1>, NumColsFromIthScalar<2>,
     DeclareOpInterfaceMethods<InferSymmetryOpInterface>,
-    DeclareOpInterfaceMethods<InferMinMaxOpInterface>, CUDASupport
+    DeclareOpInterfaceMethods<InferMinMaxOpInterface>, CUDASupport, GenerateProperties
 ]> {
     let arguments = (ins AnyScalar:$arg, Size:$numRows, Size:$numCols);
     let results = (outs MatrixOrU:$res);
@@ -273,7 +271,7 @@ def Daphne_EwAddOp    : Daphne_EwBinaryOp<"ewAdd", NumScalar, [ValueTypeFromArgs
 def Daphne_EwSubOp    : Daphne_EwBinaryOp<"ewSub", NumScalar, [ValueTypeFromArgs, EwSparseIfBoth, CUDASupport]> {
     let hasCanonicalizeMethod = 1;
 }
-def Daphne_EwMulOp    : Daphne_EwBinaryOp<"ewMul", NumScalar, [ValueTypeFromArgs, Commutative, EwSparseIfEither, CUDASupport]> {
+def Daphne_EwMulOp    : Daphne_EwBinaryOp<"ewMul", NumScalar, [ValueTypeFromArgs, Commutative, PropagateProperties, EwSparseIfEither, CUDASupport]> {
     let hasCanonicalizeMethod = 1;
 }
 def Daphne_EwDivOp    : Daphne_EwBinaryOp<"ewDiv", NumScalar, [ValueTypeFromArgs, CUDASupport]> {
@@ -620,7 +618,8 @@ def Daphne_ExtractColOp : Daphne_Op<"extractCol", [
 def Daphne_SliceColOp : Daphne_Op<"sliceCol", [
     DeclareOpInterfaceMethods<InferTypesOpInterface>,
     DeclareOpInterfaceMethods<InferShapeOpInterface>,
-    DeclareOpInterfaceMethods<InferMinMaxOpInterface>
+    DeclareOpInterfaceMethods<InferMinMaxOpInterface>,
+    PropagateProperties
 ]> {
     let summary = "Copies the specified columns from the argument to the result.";
 
@@ -672,7 +671,7 @@ def Daphne_TransposeOp : Daphne_Op<"transpose", [
     TypeFromFirstArg,
     DeclareOpInterfaceMethods<VectorizableOpInterface>,
     NumRowsFromArgNumCols, NumColsFromArgNumRows, SparsityFromArg, CUDASupport,
-    Pure, SymmetricIfArg
+    Pure, SymmetricIfArg, ConsumeProperties
 ]> {
     let hasCanonicalizeMethod = 1;
     let arguments = (ins MatrixOrU:$arg);

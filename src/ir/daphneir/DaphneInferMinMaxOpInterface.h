@@ -42,6 +42,12 @@ template<class ConcreteOp>
 class EwMinMaxIfBoth : public TraitBase<ConcreteOp, EwMinMaxIfBoth> {};
 template<class ConcreteOp>
 class MinMaxRes : public TraitBase<ConcreteOp, MinMaxRes> {};
+template<class ConcreteOp>
+class ConsumeProperties : public TraitBase<ConcreteOp, ConsumeProperties> {};
+template<class ConcreteOp>
+class PropagateProperties : public TraitBase<ConcreteOp, PropagateProperties> {};
+template<class ConcreteOp>
+class GenerateProperties : public TraitBase<ConcreteOp, GenerateProperties> {};
 
 
 template<size_t i>

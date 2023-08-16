@@ -31,5 +31,9 @@ def MinMaxIfArg : NativeOpTrait<"MinMaxIfArg">;
 // the result of the oprations will always be symmetric
 def MinMaxRes : NativeOpTrait<"MinMaxRes">;
 
+def ConsumeProperties : NativeOpTrait<"ConsumeProperties">;
+def PropagateProperties: NativeOpTrait<"PropagateProperties">;
+def GenerateProperties : NativeOpTrait<"GenerateProperties">;
+
 
 #endif //SRC_IR_DAPHNEIR_DAPHNEINFERMINMAXTRAITS_TD

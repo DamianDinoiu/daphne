@@ -102,9 +102,10 @@ bool DaphneIrExecutor::runPasses(mlir::ModuleOp module)
         // run only three iterations of both passes (see #173).
         pm.addNestedPass<mlir::func::FuncOp>(mlir::daphne::createInferencePass());
         pm.addPass(mlir::createCanonicalizerPass());
+        pm.addPass(mlir::daphne::createPathFindingPass());
         
         pm.addNestedPass<mlir::func::FuncOp>(mlir::daphne::createInsertPropertiesPass());
-        pm.addPass(mlir::daphne::createPrintIRPass("IR after properties insertion:"));
+        // pm.addPass(mlir::daphne::createPrintIRPass("IR after properties insertion:"));
         if(selectMatrixRepresentations_)
             pm.addNestedPass<mlir::func::FuncOp>(mlir::daphne::createSelectMatrixRepresentationsPass());
         if(userConfig_.explain_select_matrix_repr)
