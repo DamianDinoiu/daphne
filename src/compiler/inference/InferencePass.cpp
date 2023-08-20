@@ -75,6 +75,8 @@ namespace {
             const ssize_t sp2 = mat2.getSparsity();
             const daphne::MatrixRepresentation repr1 = mat1.getRepresentation();
             const daphne::MatrixRepresentation repr2 = mat2.getRepresentation();
+            const ssize_t prop1 = mat1.getProperties();
+            const ssize_t prop2 = mat2.getProperties();
             return daphne::MatrixType::get(
                 ctx,
                 (vt1 == vt2) ? vt1 : u,
@@ -82,7 +84,8 @@ namespace {
                 (nc1 == nc2) ? nc1 : -1,
                 // TODO Maybe do approximate comparison of floating-point values.
                 (sp1 == sp2) ? sp1 : -1,
-                (repr1 == repr2) ? repr1 : daphne::MatrixRepresentation::Default
+                (repr1 == repr2) ? repr1 : daphne::MatrixRepresentation::Default,
+                (prop1 == prop2) ? prop1 : -1
             );
         }
         else if(frm1 && frm2) { // both types are frames
@@ -248,6 +251,30 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
                     // only to aid type inference, and for this purpose, we don't
                     // need the labels in all cases.
                 }
+                //TODO-Damian This should be user specified
+                auto doPropertiesInference = true;
+                if (doPropertiesInference) {
+
+                    auto minMax = daphne::tryInferMinMax(op);
+                    
+                    for(size_t i = 0 ; i < 1 ; i++) {
+                        if(op->getResultTypes()[i].isa<mlir::daphne::MatrixType>()) {
+                            Value rv = op->getResult(i);
+                            const Type rt = rv.getType();
+                            auto mt = rt.dyn_cast<daphne::MatrixType>();
+                            if (mt && minMax.size() != 0) {
+
+                                Properties* newProperties = new Properties();
+                                newProperties->minMax = minMax;
+                                auto propertiesPointer = reinterpret_cast<ssize_t>(newProperties);
+                                rv.setType(mt.withProperties(propertiesPointer));
+
+                            }
+                        }
+                    }
+
+                }
+
             }
             // ----------------------------------------------------------------
             // Special treatment for some control-flow (SCF) operations

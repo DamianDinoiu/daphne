@@ -1427,6 +1427,41 @@
     },
     {
         "kernelTemplate": {
+            "header": "InsertProperties.h",
+            "opName": "insertProperties",
+            "returnType": "void",
+            "templateParams": [
+                {
+                    "name": "DTRes",
+                    "isDataType": true
+                },
+                {
+                    "name": "DTArg",
+                    "isDataType": true
+                }
+            ],
+            "runtimeParams": [
+                {
+                    "type": "DTRes *&",
+                    "name": "res"
+                },
+                {
+                    "type": "DTArg *",
+                    "name": "arg"
+                },
+                {
+                    "type": "int64_t *",
+                    "name": "properties"
+                }
+            ]
+        },
+        "instantiations": [
+            [["DenseMatrix", "double"],["DenseMatrix", "double"]],
+            [["DenseMatrix", "int64_t"],["DenseMatrix", "int64_t"]]
+        ]
+    },
+    {
+        "kernelTemplate": {
             "header": "MatrixConstant.h",
             "opName": "matrixConstant",
             "returnType": "void",

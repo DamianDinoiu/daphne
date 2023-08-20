@@ -33,6 +33,8 @@ include "ir/daphneir/DaphneTypeAdaptationTraits.td"
 include "ir/daphneir/DaphneTypeInferenceTraits.td"
 include "ir/daphneir/CUDASupport.td"
 include "ir/daphneir/FPGAOPENCLSupport.td"
+include "ir/daphneir/DaphneInferMinMaxOpInterface.td"
+include "ir/daphneir/DaphneInferMinMaxTraits.td"
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
@@ -72,7 +74,7 @@ class Daphne_Op<string mnemonic, list<Trait> traits = []> :
 
 def Daphne_FillOp : Daphne_Op<"fill", [
     DataTypeMat, ValueTypeFromFirstArg,
-    NumRowsFromIthScalar<1>, NumColsFromIthScalar<2>, CUDASupport
+    NumRowsFromIthScalar<1>, NumColsFromIthScalar<2>, CUDASupport, DeclareOpInterfaceMethods<InferMinMaxOpInterface>
 ]> {
     let arguments = (ins AnyScalar:$arg, Size:$numRows, Size:$numCols);
     let results = (outs MatrixOrU:$res);
@@ -1638,6 +1640,11 @@ def Daphne_SetCellOp : Daphne_Op<"setCell",  []> {
     let summary = "set cell operation";
 
     let arguments = (ins MatrixOrU:$mat, Index:$row, Index:$col, AnyScalar:$val);
+}
+
+def Daphne_InsertPropertiesOp : Daphne_Op<"insertProperties"> {
+    let arguments = (ins MatrixOrFrame:$arg,  AnyScalar:$properties);
+    let results = (outs MatrixOrU:$res);
 }
 
 #endif //SRC_IR_DAPHNEIR_DAPHNEOPS_TD

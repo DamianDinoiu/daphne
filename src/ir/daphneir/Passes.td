@@ -55,4 +55,8 @@ def WhileLoopInvariantCodeMotionPass : Pass<"while-loop-invariant-code-motion", 
     let constructor = "mlir::daphne::createWhileLoopInvariantCodeMotionPass()";
 }
 
+def InsertProperties : Pass<"insert-properties", "::mlir::func::FuncOp"> {
+    let constructor = "mlir::daphne::createInsertPropertiesPass()";
+}
+
 #endif // SRC_IR_DAPHNEIR_PASSES_TD

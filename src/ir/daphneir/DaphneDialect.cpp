@@ -81,6 +81,7 @@ mlir::Type mlir::daphne::DaphneDialect::parseType(mlir::DialectAsmParser &parser
         ssize_t numRows = -1;
         ssize_t numCols = -1;
         double sparsity = -1.0;
+        ssize_t properties = -1;
         MatrixRepresentation representation = MatrixRepresentation::Default; // default is dense
         mlir::Type elementType;
         if (parser.parseLess()) {
@@ -133,7 +134,7 @@ mlir::Type mlir::daphne::DaphneDialect::parseType(mlir::DialectAsmParser &parser
         }
 
         return MatrixType::get(
-                parser.getBuilder().getContext(), elementType, numRows, numCols, sparsity, representation
+                parser.getBuilder().getContext(), elementType, numRows, numCols, sparsity, representation, properties
         );
     }
     else if (keyword == "Frame") {
@@ -203,12 +204,16 @@ void mlir::daphne::DaphneDialect::printType(mlir::Type type,
                 << t.getElementType();
         auto sparsity = t.getSparsity();
         auto representation = t.getRepresentation();
+        auto properties = t.getProperties();
 
         if (sparsity != -1.0) {
             os << ":sp[" << sparsity << ']';
         }
         if (representation != MatrixRepresentation::Default) {
             os << ":rep[" << matrixRepresentationToString(representation) << ']';
+        }
+        if (properties != -1){
+            os << "prop:[" << properties << "]";
         }
         os << '>';
     }
@@ -289,12 +294,13 @@ namespace mlir::daphne {
                               ssize_t numRows,
                               ssize_t numCols,
                               double sparsity,
-                              MatrixRepresentation representation)
+                              MatrixRepresentation representation,
+                              ssize_t properties)
                 : elementType(elementType), numRows(numRows), numCols(numCols), sparsity(sparsity),
-                  representation(representation) {}
+                  representation(representation), properties(properties) {}
 
             /// The hash key is a tuple of the parameter types.
-            using KeyTy = std::tuple<::mlir::Type, ssize_t, ssize_t, double, MatrixRepresentation>;
+            using KeyTy = std::tuple<::mlir::Type, ssize_t, ssize_t, double, MatrixRepresentation, ssize_t>;
             bool operator==(const KeyTy &tblgenKey) const {
                 if(!(elementType == std::get<0>(tblgenKey)))
                     return false;
@@ -306,6 +312,8 @@ namespace mlir::daphne {
                     return false;
                 if(representation != std::get<4>(tblgenKey))
                     return false;
+                if(properties != std::get<5>(tblgenKey))
+                    return false;
                 return true;
             }
             static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
@@ -314,7 +322,8 @@ namespace mlir::daphne {
                     std::get<1>(tblgenKey),
                     std::get<2>(tblgenKey),
                     float_hashable,
-                    std::get<4>(tblgenKey));
+                    std::get<4>(tblgenKey),
+                    std::get<5>(tblgenKey));
             }
 
             /// Define a construction method for creating a new instance of this
@@ -326,15 +335,17 @@ namespace mlir::daphne {
                 auto numCols = std::get<2>(tblgenKey);
                 auto sparsity = std::get<3>(tblgenKey);
                 auto representation = std::get<4>(tblgenKey);
+                auto properties = std::get<5>(tblgenKey);
 
                 return new(allocator.allocate<MatrixTypeStorage>())
-                    MatrixTypeStorage(elementType, numRows, numCols, sparsity, representation);
+                    MatrixTypeStorage(elementType, numRows, numCols, sparsity, representation, properties);
             }
             ::mlir::Type elementType;
             ssize_t numRows;
             ssize_t numCols;
             double sparsity;
             MatrixRepresentation representation;
+            ssize_t properties;
         };
     }
     ::mlir::Type MatrixType::getElementType() const { return getImpl()->elementType; }
@@ -342,6 +353,7 @@ namespace mlir::daphne {
     ssize_t MatrixType::getNumCols() const { return getImpl()->numCols; }
     double MatrixType::getSparsity() const { return getImpl()->sparsity; }
     MatrixRepresentation MatrixType::getRepresentation() const { return getImpl()->representation; }
+    ssize_t MatrixType::getProperties() const { return getImpl()->properties; }
 }
 
 mlir::OpFoldResult mlir::daphne::ConstantOp::fold(FoldAdaptor adaptor)
@@ -353,7 +365,7 @@ mlir::OpFoldResult mlir::daphne::ConstantOp::fold(FoldAdaptor adaptor)
 ::mlir::LogicalResult mlir::daphne::MatrixType::verify(
         ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
         Type elementType,
-        ssize_t numRows, ssize_t numCols, double sparsity, MatrixRepresentation rep
+        ssize_t numRows, ssize_t numCols, double sparsity, MatrixRepresentation rep, ssize_t properties
 )
 {
     if (
