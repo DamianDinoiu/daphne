@@ -102,6 +102,10 @@ class NumRowsFromSumOfAllArgs: public TraitBase<ConcreteOp, NumRowsFromSumOfAllA
 template<class ConcreteOp>
 class NumColsFromSumOfAllArgs: public TraitBase<ConcreteOp, NumColsFromSumOfAllArgs> {};
 
+template<class ConcreteOp>
+class NumRowsFromProperties : public TraitBase<ConcreteOp, NumRowsFromProperties> {};
+
+
 // ============================================================================
 // Traits determining #rows and #cols together
 // ============================================================================

@@ -36,6 +36,10 @@ struct JsonKeys {
 
     // optional key
     inline static const std::string NUM_NON_ZEROS = "numNonZeros";  // int (default: -1)
+    inline static const std::string MAX = "max";  // int (default: -1)
+    inline static const std::string HIST = "hist";
+    inline static const std::string MINMAX = "minmax";
+    inline static const std::string UNIQUE = "unique";
 };
 
 #endif

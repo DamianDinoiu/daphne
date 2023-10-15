@@ -551,6 +551,23 @@ std::vector<std::pair<ssize_t, ssize_t>> daphne::tryInferShape(Operation* op) {
             // TODO Throw if lhs and rhs don't agree.
         }
 
+        if (op->hasTrait<NumRowsFromProperties>()) {
+
+            auto secondOp = op->getOperands()[1].getType();
+
+            if (auto mt = secondOp.dyn_cast<daphne::MatrixType>()) {
+
+                if (mt.getProperties() != -1) {
+                    Properties *properties = reinterpret_cast<Properties*>(mt.getProperties());
+                    if (properties->histograms.size() == 1)
+                    // std::cout << "=======> Well we have this many to report" << properties->histograms[0] << "\n";
+                    numRows = properties->histograms[0];
+                }
+
+            }
+
+        }
+
         if(auto inferNumRowsOp = llvm::dyn_cast<daphne::InferNumRows>(op))
             numRows = inferNumRowsOp.inferNumRows();
         if(auto inferNumColsOp = llvm::dyn_cast<daphne::InferNumCols>(op))

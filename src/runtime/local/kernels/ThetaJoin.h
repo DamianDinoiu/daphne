@@ -319,6 +319,7 @@ class ThetaJoin<Frame, Frame, Frame> {
             size_t rhsRowCount = container.rhs->getNumRows();
             
             if(!positions) {
+                //todo modify to be max
                 positions = new ResultContainer(lhsRowCount * rhsRowCount);
             }
             

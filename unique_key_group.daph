@@ -1,0 +1,15 @@
+m1 = [1, 1, 2];
+f = createFrame(m1, "a");
+
+m3 = [1, 1, 2, 2];
+h = createFrame(m3,"c");
+
+print(f);
+print(h);
+
+registerView("x", f);
+registerView("y", h);
+
+k, c = groupJoin(f, h, "a", "c", "c");
+
+print(k);

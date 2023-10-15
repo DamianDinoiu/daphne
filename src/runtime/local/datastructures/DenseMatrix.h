@@ -170,7 +170,7 @@ public:
         // TODO Here we could reduce the allocated size of the values array.
         this->numRows = numRows;
     }
-    
+
     [[nodiscard]] size_t getRowSkip() const { return rowSkip; }
 
     [[nodiscard]] bool isView() const { return is_view; }

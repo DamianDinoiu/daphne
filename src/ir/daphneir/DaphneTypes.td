@@ -152,7 +152,8 @@ def Frame : Daphne_Type<"Frame"> {
     let parameters = (ins
         "std::vector<::mlir::Type>":$columnTypes,
         "ssize_t":$numRows, "ssize_t":$numCols,
-        "std::vector<std::string> *":$labels
+        "std::vector<std::string> *":$labels,
+        "ssize_t":$properties
     );
 
     let genVerifyDecl = 1;
@@ -161,7 +162,7 @@ def Frame : Daphne_Type<"Frame"> {
         // Creates a FrameType from mere column type information, with all
         // other parameters reset.
         TypeBuilder<(ins "std::vector<::mlir::Type>":$columnTypes), [{
-            return Base::get($_ctxt, columnTypes, -1, -1, nullptr);
+            return Base::get($_ctxt, columnTypes, -1, -1, nullptr, -1);
         }]>,
     ];
 
@@ -171,15 +172,19 @@ def Frame : Daphne_Type<"Frame"> {
         // new value.
 
         ::mlir::daphne::FrameType withColumnTypes(std::vector<::mlir::Type> columnTypes) {
-            return get(getContext(), columnTypes, getNumRows(), getNumCols(), getLabels());
+            return get(getContext(), columnTypes, getNumRows(), getNumCols(), getLabels(), getProperties());
         }
 
         ::mlir::daphne::FrameType withShape(ssize_t numRows, ssize_t numCols) {
-            return get(getContext(), getColumnTypes(), numRows, numCols, getLabels());
+            return get(getContext(), getColumnTypes(), numRows, numCols, getLabels(), getProperties());
         }
 
         ::mlir::daphne::FrameType withLabels(std::vector<std::string> * labels) {
-            return get(getContext(), getColumnTypes(), getNumRows(), getNumCols(), labels);
+            return get(getContext(), getColumnTypes(), getNumRows(), getNumCols(), labels, getProperties());
+        }
+
+        ::mlir::daphne::FrameType withProperties(ssize_t properties) {
+            return get(getContext(), getColumnTypes(), getNumRows(), getNumCols(), getLabels(), properties);
         }
 
         // The following method returns a FrameType with the same column types

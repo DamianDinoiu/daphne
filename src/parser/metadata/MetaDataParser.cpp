@@ -18,6 +18,7 @@
 #include <parser/metadata/JsonKeys.h>
 
 #include <fstream>
+#include <iostream>
 
 FileMetaData MetaDataParser::readMetaData(const std::string& filename_) {
     std::string metaFilename = filename_ + ".meta";
@@ -37,11 +38,13 @@ FileMetaData MetaDataParser::readMetaData(const std::string& filename_) {
     const bool isSingleValueType = !(keyExists(jf, JsonKeys::SCHEMA));
     const ssize_t numNonZeros = (keyExists(jf, JsonKeys::NUM_NON_ZEROS)) ? jf.at(JsonKeys::NUM_NON_ZEROS).get<ssize_t>()
             : -1;
+    const ssize_t max = (keyExists(jf, JsonKeys::MAX)) ? jf.at(JsonKeys::MAX).get<ssize_t>()
+            : -1;
     
     if (isSingleValueType) {
         if (keyExists(jf, JsonKeys::VALUE_TYPE)) {
             ValueTypeCode vtc = jf.at(JsonKeys::VALUE_TYPE).get<ValueTypeCode>();
-            return {numRows, numCols, isSingleValueType, vtc, numNonZeros};
+            return {numRows, numCols, isSingleValueType, vtc, numNonZeros, max};
         }
         else {
             throw std::invalid_argument("A (matrix) meta data JSON file should contain the \"" + JsonKeys::VALUE_TYPE
@@ -52,12 +55,26 @@ FileMetaData MetaDataParser::readMetaData(const std::string& filename_) {
         if (keyExists(jf, JsonKeys::SCHEMA)) {
             std::vector<ValueTypeCode> schema;
             std::vector<std::string> labels;
+            std::vector<int> histogram;
+            std::vector<double> minMax;
+            bool unique;
             auto schemaColumn = jf.at(JsonKeys::SCHEMA).get<std::vector<SchemaColumn>>();
             for (const auto& column: schemaColumn) {
                 schema.emplace_back(column.getValueType());
                 labels.emplace_back(column.getLabel());
             }
-            return {numRows, numCols, isSingleValueType, schema, labels, numNonZeros};
+
+            auto histogramC = jf.at(JsonKeys::HIST).get<std::vector<int>>();
+            for (const auto& hist : histogramC) {
+                histogram.emplace_back(hist);
+            }
+
+            auto minMaxC = jf.at(JsonKeys::MINMAX).get<std::vector<double>>();
+            for (const auto& value : minMaxC) {
+                minMax.emplace_back(value);
+            }
+            unique = jf.at(JsonKeys::UNIQUE).get<bool>();
+            return {numRows, numCols, isSingleValueType, schema, labels, histogram, minMax, unique, numNonZeros};
         }
         else {
             throw std::invalid_argument("A (frame) meta data JSON file should contain the \"" + JsonKeys::SCHEMA

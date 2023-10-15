@@ -260,7 +260,8 @@ int startDAPHNE(int argc, const char** argv, DaphneLibResult* daphneLibRes, int 
       phy_op_selection,
       type_adaptation,
       vectorized,
-      obj_ref_mgnt
+      obj_ref_mgnt,
+      join_tree
     };
 
     static llvm::cl::list<ExplainArgs> explainArgList(
@@ -278,7 +279,8 @@ int startDAPHNE(int argc, const char** argv, DaphneLibResult* daphneLibRes, int 
             clEnumVal(vectorized, "Show DaphneIR after vectorization"),
             clEnumVal(obj_ref_mgnt, "Show DaphneIR after managing object references"),
             clEnumVal(kernels, "Show DaphneIR after kernel lowering"),
-            clEnumVal(llvm, "Show DaphneIR after llvm lowering")),
+            clEnumVal(llvm, "Show DaphneIR after llvm lowering"),
+            clEnumVal(join_tree, "Optimize joins tree pass")),
         CommaSeparated);
 
     static llvm::cl::list<string> scriptArgs1(
@@ -410,6 +412,9 @@ int startDAPHNE(int argc, const char** argv, DaphneLibResult* daphneLibRes, int 
                 break;
             case obj_ref_mgnt:
                 user_config.explain_obj_ref_mgnt = true;
+                break;
+            case join_tree:
+                user_config.explain_join_tree = true;
                 break;
         }
     }

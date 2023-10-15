@@ -59,4 +59,8 @@ def InsertProperties : Pass<"insert-properties", "::mlir::func::FuncOp"> {
     let constructor = "mlir::daphne::createInsertPropertiesPass()";
 }
 
+def JoinTree : Pass<"insert-properties", "::mlir::func::FuncOp"> {
+    let constructor = "mlir::daphne::createJoinTreePass()";
+}
+
 #endif // SRC_IR_DAPHNEIR_PASSES_TD

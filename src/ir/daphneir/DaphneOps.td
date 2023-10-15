@@ -35,6 +35,11 @@ include "ir/daphneir/CUDASupport.td"
 include "ir/daphneir/FPGAOPENCLSupport.td"
 include "ir/daphneir/DaphneInferMinMaxOpInterface.td"
 include "ir/daphneir/DaphneInferMinMaxTraits.td"
+include "ir/daphneir/DaphneInferHistogramOpInterface.td"
+include "ir/daphneir/DaphneInferHistogramTraits.td"
+include "ir/daphneir/DaphneInferUniqueOpInterface.td"
+include "ir/daphneir/DaphneInferUniqueTraits.td"
+
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
@@ -92,7 +97,8 @@ def Daphne_CreateFrameOp : Daphne_Op<"createFrame", [
     SameVariadicOperandSize,
     DeclareOpInterfaceMethods<InferFrameLabelsOpInterface>,
     DeclareOpInterfaceMethods<InferTypesOpInterface>,
-    DeclareOpInterfaceMethods<InferShapeOpInterface>
+    DeclareOpInterfaceMethods<InferShapeOpInterface>,
+    DeclareOpInterfaceMethods<InferMinMaxOpInterface>
 ]> {
     let arguments = (ins Variadic<MatrixOrU>:$cols, Variadic<StrScalar>:$labels);
     let results = (outs FrameOrU:$res);
@@ -110,7 +116,7 @@ def Daphne_DiagMatrixOp : Daphne_Op<"diagMatrix", [
 def Daphne_RandMatrixOp : Daphne_Op<"randMatrix", [
     TypesMatchWith<"min and max arguments must be of the same type", "min", "max", "$_self">,
     NumRowsFromIthScalar<0>, NumColsFromIthScalar<1>, DeclareOpInterfaceMethods<InferTypesOpInterface>,
-    SparsityFromIthScalar<4>, CastArgsToResTypeRandMatrixOp
+    SparsityFromIthScalar<4>, CastArgsToResTypeRandMatrixOp, DeclareOpInterfaceMethods<InferMinMaxOpInterface>
 ]> {
     //let arguments = (ins Size:$numRows, Size:$numCols, AnyScalar:$min, AnyScalar:$max, F64:$sparsity, Seed:$seed, StrScalar:$pdf);
     let arguments = (ins Size:$numRows, Size:$numCols, AnyScalar:$min, AnyScalar:$max, F64:$sparsity, IntScalar:$seed);
@@ -129,7 +135,8 @@ def Daphne_SeqOp : Daphne_Op<"seq", [
     DataTypeMat, ValueTypeFromArgs,
     OneCol, DeclareOpInterfaceMethods<InferNumRowsOpInterface>,
     CompletelyDense,
-    CastArgsToResType
+    CastArgsToResType,
+    DeclareOpInterfaceMethods<InferUniqueOpInterface>
 ]> {
     let arguments = (ins NumScalar:$from, NumScalar:$to, NumScalar:$inc);
     let results = (outs MatrixOf<[NumScalar]>);
@@ -309,9 +316,11 @@ class Daphne_EwCmpOp<string name, Type inputScalarType, list<Trait> traits = []>
 
 def Daphne_EwEqOp  : Daphne_EwCmpOp<"ewEq" , AnyScalar, [Commutative]>;
 def Daphne_EwNeqOp : Daphne_EwCmpOp<"ewNeq", AnyScalar, [Commutative]>;
-def Daphne_EwLtOp  : Daphne_EwCmpOp<"ewLt" , AnyScalar>;
+def Daphne_EwLtOp  : Daphne_EwCmpOp<"ewLt" , AnyScalar, [DeclareOpInterfaceMethods<InferMinMaxOpInterface>, DeclareOpInterfaceMethods<InferHistogramOpInterface>]>{
+    let hasCanonicalizeMethod = 1;
+}
 def Daphne_EwLeOp  : Daphne_EwCmpOp<"ewLe" , AnyScalar>;
-def Daphne_EwGtOp  : Daphne_EwCmpOp<"ewGt" , AnyScalar>;
+def Daphne_EwGtOp  : Daphne_EwCmpOp<"ewGt" , AnyScalar> {let hasCanonicalizeMethod = 1;}
 def Daphne_EwGeOp  : Daphne_EwCmpOp<"ewGe" , AnyScalar>;
 
 // ****************************************************************************
@@ -521,7 +530,8 @@ def Daphne_CovOp : Daphne_Op<"cov"> {
 
 def Daphne_ExtractOp : Daphne_Op<"extract", [
     NumRowsFromIthArg<1>, NumColsFromIthArgNumRows<2>,
-    DeclareOpInterfaceMethods<InferTypesOpInterface>
+    DeclareOpInterfaceMethods<InferTypesOpInterface>,
+    UniqueIfArg
 ]> {
     let summary = "Copies the specified rows and columns from the argument to the result.";
 
@@ -576,7 +586,9 @@ def Daphne_ExtractColOp : Daphne_Op<"extractCol", [
     DeclareOpInterfaceMethods<InferFrameLabelsOpInterface>,
     DeclareOpInterfaceMethods<InferTypesOpInterface>,
     DeclareOpInterfaceMethods<VectorizableOpInterface>,
-    NumRowsFromArg, NumColsFromIthArgNumRows<1>, CUDASupport
+    NumRowsFromArg, NumColsFromIthArgNumRows<1>, CUDASupport,
+    DeclareOpInterfaceMethods<InferMinMaxOpInterface>,
+    PropagateHistogram
 ]> {
     let summary = "Copies the specified columns from the argument to the result.";
 
@@ -1072,7 +1084,7 @@ def Daphne_QueryOp : Daphne_Op<"query", [
 def Daphne_FilterRowOp : Daphne_Op<"filterRow", [
     TypeFromFirstArg,
     DeclareOpInterfaceMethods<InferFrameLabelsOpInterface>,
-    NumColsFromArg
+    NumColsFromArg, NumRowsFromProperties
 ]> {
     let summary = "Filters the rows of a data object according to a bit vector";
 
@@ -1166,7 +1178,9 @@ def Daphne_SetColLabelsOp : Daphne_Op<"setColLabels", [
 def Daphne_SetColLabelsPrefixOp : Daphne_Op<"setColLabelsPrefix", [
     TypeFromFirstArg,
     DeclareOpInterfaceMethods<InferFrameLabelsOpInterface>,
-    ShapeFromArg
+    ShapeFromArg,
+    DeclareOpInterfaceMethods<InferMinMaxOpInterface>,
+    PropagateHistogram
 ]> {
     let arguments = (ins FrameOrU:$arg, StrScalar:$prefix);
     let results = (outs FrameOrU:$res);
@@ -1185,7 +1199,10 @@ def Daphne_ToStringOp : Daphne_Op<"toString", [DataTypeSca, ValueTypeStr]> {
 
 def Daphne_CastOp : Daphne_Op<"cast", [
     DeclareOpInterfaceMethods<InferTypesOpInterface>,
-    ShapeFromArg
+    DeclareOpInterfaceMethods<InferMinMaxOpInterface>,
+    ShapeFromArg,
+    PropagateHistogram,
+    UniqueIfArg
 ]> {
     // Note that the requested result type is not an argument, but should be
     // specified as the output type when creating a CastOp.
@@ -1553,7 +1570,8 @@ def Daphne_ConstantOp : Daphne_Op<"constant", [ConstantLike, Pure]> {
         //}]>,
         OpBuilder<(ins "std::string":$value), [{
             build($_builder, $_state, mlir::daphne::StringType::get($_builder.getContext()), $_builder.getStringAttr(value));
-        }]>,
+        }]>
+
     ];
 
     let hasFolder = 1;
@@ -1644,7 +1662,7 @@ def Daphne_SetCellOp : Daphne_Op<"setCell",  []> {
 
 def Daphne_InsertPropertiesOp : Daphne_Op<"insertProperties"> {
     let arguments = (ins MatrixOrFrame:$arg,  AnyScalar:$properties);
-    let results = (outs MatrixOrU:$res);
+    let results = (outs MatrixOrFrame:$res);
 }
 
 #endif //SRC_IR_DAPHNEIR_DAPHNEOPS_TD

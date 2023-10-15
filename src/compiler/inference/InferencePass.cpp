@@ -111,7 +111,8 @@ namespace {
                 (nr1 == nr2) ? nr1 : -1,
                 (nc1 == nc2) ? nc1 : -1,
                 // TODO Take #485 into account.
-                (lbls1 == lbls2) ? lbls1 : nullptr
+                (lbls1 == lbls2) ? lbls1 : nullptr,
+                -1
             );
         }
         else if(mat1 || mat2 || frm1 || frm2) // t1 and t2 are of different data types (matrix, frame, scalar)
@@ -191,7 +192,6 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
                         );
                     // Set the infered shapes on all results of this operation.
                     for(size_t i = 0 ; i < numRes ; i++) {
-                        if(op->getResultTypes()[i].isa<mlir::daphne::MatrixType>()) {
                             const ssize_t numRows = shapes[i].first;
                             const ssize_t numCols = shapes[i].second;
                             Value rv = op->getResult(i);
@@ -207,7 +207,6 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
                                         " operand " + std::to_string(i) + ", since it "
                                                                           "is neither a matrix nor a frame"
                                 );
-                        }
                     }
                 }
                 if (doSparsityInference) {
@@ -251,17 +250,18 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
                     // only to aid type inference, and for this purpose, we don't
                     // need the labels in all cases.
                 }
-                //TODO-Damian This should be user specified
+
+                // std::cout << "lololo\n";
                 auto doPropertiesInference = true;
                 if (doPropertiesInference) {
 
                     auto minMax = daphne::tryInferMinMax(op);
                     
                     for(size_t i = 0 ; i < 1 ; i++) {
-                        if(op->getResultTypes()[i].isa<mlir::daphne::MatrixType>()) {
                             Value rv = op->getResult(i);
                             const Type rt = rv.getType();
                             auto mt = rt.dyn_cast<daphne::MatrixType>();
+                            auto ft = rt.dyn_cast<daphne::FrameType>();
                             if (mt && minMax.size() != 0) {
 
                                 Properties* newProperties = new Properties();
@@ -270,11 +270,64 @@ class InferencePass : public PassWrapper<InferencePass, OperationPass<func::Func
                                 rv.setType(mt.withProperties(propertiesPointer));
 
                             }
-                        }
+
+                            if (ft && minMax.size() != 0) {
+
+                                Properties* newProperties = new Properties();
+                                newProperties->minMax = minMax;
+                                auto propertiesPointer = reinterpret_cast<ssize_t>(newProperties);
+                                rv.setType(ft.withProperties(propertiesPointer));
+
+                            }
+
+
                     }
 
-                }
+                    auto histogram = daphne::tryInferHistogram(op);
+                    
+                    for(size_t i = 0 ; i < 1 ; i++) {
+                            Value rv = op->getResult(i);
+                            const Type rt = rv.getType();
+                            auto mt = rt.dyn_cast<daphne::MatrixType>();
+                            auto ft = rt.dyn_cast<daphne::FrameType>();
+                            if (mt && histogram.size() != 0) {
 
+                                Properties* newProperties = new Properties();
+                                newProperties->histograms = histogram;
+                                auto propertiesPointer = reinterpret_cast<ssize_t>(newProperties);
+                                rv.setType(mt.withProperties(propertiesPointer));
+                            }
+
+                            if (ft && histogram.size() != 0) {
+                                Properties* newProperties = new Properties();
+                                newProperties->histograms = histogram;
+                                auto propertiesPointer = reinterpret_cast<ssize_t>(newProperties);
+                                rv.setType(ft.withProperties(propertiesPointer));
+                            }
+                    }
+
+                    auto unique = daphne::tryInferUnique(op);
+                    for(size_t i = 0 ; i < 1 ; i++) {
+                            Value rv = op->getResult(i);
+                            const Type rt = rv.getType();
+                            auto mt = rt.dyn_cast<daphne::MatrixType>();
+                            auto ft = rt.dyn_cast<daphne::FrameType>();
+                            if (mt && unique) {
+
+                                Properties* newProperties = new Properties();
+                                newProperties->unique = unique;
+                                auto propertiesPointer = reinterpret_cast<ssize_t>(newProperties);
+                                rv.setType(mt.withProperties(propertiesPointer));
+                            }
+
+                            if (ft && unique) {
+                                Properties* newProperties = new Properties();
+                                newProperties->unique = unique;
+                                auto propertiesPointer = reinterpret_cast<ssize_t>(newProperties);
+                                rv.setType(ft.withProperties(propertiesPointer));
+                            }
+                    }
+                }
             }
             // ----------------------------------------------------------------
             // Special treatment for some control-flow (SCF) operations

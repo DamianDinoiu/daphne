@@ -39,6 +39,7 @@ def NumRowsFromAllArgs : NativeOpTrait<"NumRowsFromAllArgs">;
 def NumColsFromAllArgs : NativeOpTrait<"NumColsFromAllArgs">;
 def NumRowsFromSumOfAllArgs : NativeOpTrait<"NumRowsFromSumOfAllArgs">;
 def NumColsFromSumOfAllArgs : NativeOpTrait<"NumColsFromSumOfAllArgs">;
+def NumRowsFromProperties : NativeOpTrait<"NumRowsFromProperties">;
 
 // ****************************************************************************
 // Traits determining #rows and #cols together.

@@ -1,0 +1,22 @@
+customers = readFrame("customers.csv");
+registerView("customers", customers);
+
+orders = readFrame("orders.csv");
+registerView("orders", orders);
+
+parts = readFrame("parts.csv");
+registerView("parts", parts);
+
+customers_s = sql("SELECT customers.custId, customers.market From customers Where customers.market < 5");
+parts_s = sql("SELECT parts.partId, parts.market From parts Where parts.market < 7");
+
+t0 = now();
+result = innerJoin(parts_s, orders, "parts.partId", "partId");
+t2 = now();
+//print(result);
+result = innerJoin(result, customers_s, "custId", "customers.custId");
+t1 = now();
+
+print(result);
+print(t2-t0);
+

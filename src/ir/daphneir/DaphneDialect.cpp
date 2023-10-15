@@ -47,6 +47,8 @@
 #include <llvm/ADT/APSInt.h>
 #include <llvm/ADT/DenseMap.h>
 
+#include <iostream>
+
 void mlir::daphne::DaphneDialect::initialize()
 {
     addOperations<
@@ -167,7 +169,7 @@ mlir::Type mlir::daphne::DaphneDialect::parseType(mlir::DialectAsmParser &parser
             return nullptr;
         }
         return FrameType::get(
-                parser.getBuilder().getContext(), cts, numRows, numCols, nullptr
+                parser.getBuilder().getContext(), cts, numRows, numCols, nullptr, -1
         );
     }
     else if (keyword == "Handle") {
@@ -213,9 +215,21 @@ void mlir::daphne::DaphneDialect::printType(mlir::Type type,
             os << ":rep[" << matrixRepresentationToString(representation) << ']';
         }
         if (properties != -1){
-            os << "prop:[" << properties << "]";
+            os << "prop:[";
+             auto propertiesPointer = reinterpret_cast<Properties *>(properties);
+
+            if (propertiesPointer->histograms.size() != 0)
+                for(size_t i = 0; i < propertiesPointer->histograms.size(); i++)
+                    os << propertiesPointer->histograms[i] << " ";
+            
+            if (propertiesPointer->minMax.size() != 0) {
+                os << "minMax";
+                for(size_t i = 0; i < propertiesPointer->minMax.size(); i++)
+                    os << int(propertiesPointer->minMax[i]) << " ";
+            }
+            os << "]";
+
         }
-        os << '>';
     }
     else if (auto t = type.dyn_cast<mlir::daphne::FrameType>()) {
         os << "Frame<"
@@ -229,6 +243,20 @@ void mlir::daphne::DaphneDialect::printType(mlir::Type type,
                 os << ", ";
         }
         os << "], ";
+
+        if (t.getProperties() != -1) {
+            Properties* properties = reinterpret_cast<Properties*>(t.getProperties());
+            
+            os << "hist = [";
+            if (properties->histograms.size() != 0)
+                for(size_t i = 0; i < properties->histograms.size(); i++)
+                    os << properties->histograms[i] << " ";
+
+            os << "]";
+            //os << "YEY = " << properties->histograms[0];
+
+            // os << "  <<P:" << properties->minMax[0] << ">>  ";
+        }
         // Column labels.
         std::vector<std::string> * labels = t.getLabels();
         if(labels) {
@@ -400,7 +428,8 @@ mlir::OpFoldResult mlir::daphne::ConstantOp::fold(FoldAdaptor adaptor)
         ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
         std::vector<Type> columnTypes,
         ssize_t numRows, ssize_t numCols,
-        std::vector<std::string> * labels
+        std::vector<std::string> * labels,
+        ssize_t properties
 )
 {
     // TODO Verify the individual column types.
@@ -1197,8 +1226,8 @@ mlir::LogicalResult mlir::daphne::EwSubOp::canonicalize(
  * @return 
  */
 mlir::LogicalResult mlir::daphne::EwMulOp::canonicalize(
-        mlir::daphne::EwMulOp op, PatternRewriter &rewriter
-) {
+        mlir::daphne::EwMulOp op, PatternRewriter &rewriter) 
+{
     mlir::Value lhs = op.getLhs();
     mlir::Value rhs = op.getRhs();
     const bool lhsIsSca = !lhs.getType().isa<mlir::daphne::MatrixType, mlir::daphne::FrameType>();
@@ -1209,6 +1238,110 @@ mlir::LogicalResult mlir::daphne::EwMulOp::canonicalize(
     }
     return mlir::failure();
 }
+
+mlir::LogicalResult mlir::daphne::EwGtOp::canonicalize(
+        mlir::daphne::EwGtOp op, PatternRewriter &rewriter
+) {
+
+    auto lhsType = op.getLhs().getType();
+    auto rhsType = op.getRhs().getType();
+
+    auto compareValue = CompilerUtils::constantOrDefault<int64_t>(op.getRhs(), 0);
+
+     if (auto mt = lhsType.dyn_cast<daphne::MatrixType>()) {
+
+        Properties* properties = reinterpret_cast<Properties*>(mt.getProperties());
+
+        if (properties->minMax.size() != 0) {
+            auto min = properties->minMax[0];
+            auto max = properties->minMax[1];
+
+        auto fillValue = -1;
+        
+        if (min > compareValue)
+            fillValue = 1;
+        if (max < compareValue)
+            fillValue = 0;
+
+        if (fillValue != -1) {
+
+            //Value in the matrix
+            auto newConst2 = rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), int64_t(fillValue));
+            //Number of cols
+            auto newConst = rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), int64_t(1));
+            auto pointerValue = static_cast<mlir::Value>(newConst);
+            auto ceva = rewriter.create<mlir::daphne::CastOp>(newConst.getLoc(), rewriter.getIndexType(), pointerValue);
+            auto ceva2 = static_cast<mlir::Value>(ceva);
+            //Number of rows
+            auto newConst3 = rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), int64_t(mt.getNumRows()));
+            auto pointerValue2 = static_cast<mlir::Value>(newConst3);
+            auto ceva33 = rewriter.create<mlir::daphne::CastOp>(newConst.getLoc(), rewriter.getIndexType(), pointerValue2);
+            auto ceva3 = static_cast<mlir::Value>(ceva33);
+            
+            rewriter.replaceOpWithNewOp<mlir::daphne::FillOp>(op, op.getResult().getType(), newConst2, ceva3, ceva2);
+        }
+     }
+     }
+
+     return mlir::success();
+}
+
+/**
+ * @brief Replaces `a * X` by `X * a` (`a` scalar, `X` matrix/frame).
+ * 
+ * This is important, since our kernels for elementwise binary operations only support
+ * scalars as the right-hand-side operand so far (see #203).
+ * 
+ * @param op
+ * @param rewriter
+ * @return 
+ */
+mlir::LogicalResult mlir::daphne::EwLtOp::canonicalize(
+        mlir::daphne::EwLtOp op, PatternRewriter &rewriter) 
+{
+    auto lhsType = op.getLhs().getType();
+    auto rhsType = op.getRhs().getType();
+
+    auto compareValue = CompilerUtils::constantOrDefault<int64_t>(op.getRhs(), 0);
+
+     if (auto mt = lhsType.dyn_cast<daphne::MatrixType>()) {
+
+        Properties* properties = reinterpret_cast<Properties*>(mt.getProperties());
+
+        if (properties->minMax.size() != 0) {
+        auto min = properties->minMax[0];
+        auto max = properties->minMax[1];
+
+        auto fillValue = -1;
+        
+        if (min > compareValue)
+            fillValue = 1;
+        if (max < compareValue)
+            fillValue = 0;
+
+        if (fillValue != -1) {
+
+            //Value in the matrix
+            auto newConst2 = rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), int64_t(fillValue));
+            //Number of cols
+            auto newConst = rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), int64_t(1));
+            auto pointerValue = static_cast<mlir::Value>(newConst);
+            auto ceva = rewriter.create<mlir::daphne::CastOp>(newConst.getLoc(), rewriter.getIndexType(), pointerValue);
+            auto ceva2 = static_cast<mlir::Value>(ceva);
+            //Number of rows
+            auto newConst3 = rewriter.create<mlir::daphne::ConstantOp>(op->getLoc(), int64_t(mt.getNumRows()));
+            auto pointerValue2 = static_cast<mlir::Value>(newConst3);
+            auto ceva33 = rewriter.create<mlir::daphne::CastOp>(newConst.getLoc(), rewriter.getIndexType(), pointerValue2);
+            auto ceva3 = static_cast<mlir::Value>(ceva33);
+            
+            rewriter.replaceOpWithNewOp<mlir::daphne::FillOp>(op, op.getResult().getType(), newConst2, ceva3, ceva2);
+        }
+     }
+     }
+
+     return mlir::success();
+}
+
 
 /**
  * @brief Replaces `a / X` by `(X ^ -1) * a` (`a` scalar, `X` matrix/frame),

@@ -63,8 +63,7 @@ void InsertPropertiesPass::runOnOperation()
                     if (mt.getProperties() != -1) {
 
                         auto properties = reinterpret_cast<Properties *>(mt.getProperties());
-                        if (properties->symmetry || properties->minMax.size() != 0) {
-                        // std::cout << "Properties = " << properties->minMax[0];
+                        if (properties->symmetry || properties->minMax.size() != 0 || properties->unique) {
 
                             builder.setInsertionPointAfter(op);
                             auto constantOp = builder.create<mlir::daphne::ConstantOp>(op->getLoc(), mt.getProperties());
@@ -77,7 +76,30 @@ void InsertPropertiesPass::runOnOperation()
                                 pointerValue
                             );
 
-                            // .push_banewResultsck(newOp.getRes());
+                            result.replaceAllUsesExcept(newOp.getRes(), {newOp});
+                        }
+                    }
+                }
+
+                if (resultType.isa<mlir::daphne::FrameType>()) {
+
+                    auto mt = resultType.dyn_cast<daphne::FrameType>();
+                    if (mt.getProperties() != -1) {
+
+                        auto properties = reinterpret_cast<Properties *>(mt.getProperties());
+                        if (properties->symmetry || properties->minMax.size() != 0 || properties->unique) {
+
+                            builder.setInsertionPointAfter(op);
+                            auto constantOp = builder.create<mlir::daphne::ConstantOp>(op->getLoc(), mt.getProperties());
+                            auto pointerValue = static_cast<mlir::Value>(constantOp);
+
+                            auto newOp = builder.create<mlir::daphne::InsertPropertiesOp>(
+                                op->getLoc(),
+                                resultType,
+                                result,
+                                pointerValue
+                            );
+
                             result.replaceAllUsesExcept(newOp.getRes(), {newOp});
                         }
                     }

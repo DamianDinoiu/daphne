@@ -18,6 +18,7 @@
 #define SRC_RUNTIME_LOCAL_DATASTRUCTURES_MATRIX_H
 
 #include <runtime/local/datastructures/Structure.h>
+#include <runtime/local/datastructures/Properties.h>
 
 #include <cstddef>
 

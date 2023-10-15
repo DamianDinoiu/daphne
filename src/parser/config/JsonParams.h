@@ -53,6 +53,7 @@ struct DaphneConfigJsonParams {
     inline static const std::string LIBRARY_PATHS = "library_paths";
     inline static const std::string DAPHNEDSL_IMPORT_PATHS = "daphnedsl_import_paths";
     inline static const std::string LOGGING = "logging";
+    inline static const std::string EXPLAIN_JOIN_TREE = "explain_join_tree";
     
     inline static const std::string JSON_PARAMS[] = {
             USE_CUDA_,
@@ -81,7 +82,9 @@ struct DaphneConfigJsonParams {
             LIB_DIR,
             LIBRARY_PATHS,
             DAPHNEDSL_IMPORT_PATHS,
-            LOGGING
+            LOGGING,
+            EXPLAIN_JOIN_TREE
+            
     };
 };
 

@@ -83,11 +83,14 @@ struct Write<Frame> {
         File * file = openFileForWrite(filename);
         std::vector<ValueTypeCode> vtcs;
         std::vector<std::string> labels;
+        std::vector<int> histogram;
+        std::vector<double> minMax;
+        bool unique;
         for(size_t i = 0; i < arg->getNumCols(); i++) {
             vtcs.push_back(arg->getSchema()[i]);
             labels.push_back(arg->getLabels()[i]);
         }
-        FileMetaData metaData(arg->getNumRows(), arg->getNumCols(), false, vtcs, labels);
+        FileMetaData metaData(arg->getNumRows(), arg->getNumCols(), false, vtcs, labels, histogram, minMax, unique);
         MetaDataParser::writeMetaData(filename, metaData);
         writeCsv(arg, file);
         closeFile(file);

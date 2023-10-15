@@ -168,7 +168,9 @@ bool DaphneIrExecutor::runPasses(mlir::ModuleOp module)
         pm.addPass(mlir::createCSEPass());
 
         pm.addPass(mlir::daphne::createInsertPropertiesPass());
-        // pm.addPass(mlir::daphne::createPrintIRPass("IR after insert properties"));
+        if(userConfig_.explain_join_tree)
+            pm.addPass(mlir::daphne::createJoinTreePass());
+        pm.addPass(mlir::daphne::createPrintIRPass("IR after insert properties"));
         
         if(userConfig_.use_obj_ref_mgnt)
             pm.addNestedPass<mlir::func::FuncOp>(mlir::daphne::createManageObjRefsPass());

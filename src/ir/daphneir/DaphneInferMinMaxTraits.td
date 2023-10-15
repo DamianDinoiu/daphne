@@ -21,7 +21,7 @@ include "mlir/IR/OpBase.td"
 
 
 // ****************************************************************************
-// Traits determining symmetry for elementwise ops
+// Traits determining MinMax for elementwise ops
 // ****************************************************************************
 
 // if both elements are true, the result is true

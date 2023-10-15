@@ -1,0 +1,7 @@
+a = readFrame("data.csv");
+
+registerView("x", a);
+
+a1 = sql("SELECT x.a From x Where x.a < 50");
+
+print(a1);

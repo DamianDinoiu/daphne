@@ -65,7 +65,6 @@ struct EwUnaryMat<DenseMatrix<VT>, DenseMatrix<VT>> {
         VT * valuesRes = res->getValues();
         
         EwUnaryScaFuncPtr<VT, VT> func = getEwUnaryScaFuncPtr<VT, VT>(opCode);
-        
         for(size_t r = 0; r < numRows; r++) {
             for(size_t c = 0; c < numCols; c++)
                 valuesRes[c] = func(valuesArg[c], ctx);

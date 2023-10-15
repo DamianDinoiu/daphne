@@ -1457,7 +1457,8 @@
         },
         "instantiations": [
             [["DenseMatrix", "double"],["DenseMatrix", "double"]],
-            [["DenseMatrix", "int64_t"],["DenseMatrix", "int64_t"]]
+            [["DenseMatrix", "int64_t"],["DenseMatrix", "int64_t"]],
+            ["Frame", "Frame"]
         ]
     },
     {

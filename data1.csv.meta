@@ -1,0 +1,11 @@
+{
+  "numRows": 25,
+  "numCols": 1,
+  "schema": [
+    {
+      "label": "b",
+      "valueType": "si64"
+    }
+  ],
+  "hist": [7, 6, 6, 6, 6]
+}

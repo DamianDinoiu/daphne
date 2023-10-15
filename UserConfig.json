@@ -9,6 +9,7 @@
     "explain_llvm": false,
     "explain_parsing": false,
     "explain_parsing_simplified": false,
+    "explain_join_tree": false,
     "explain_property_inference": false,
     "explain_sql": false,
     "explain_type_adaptation": false,

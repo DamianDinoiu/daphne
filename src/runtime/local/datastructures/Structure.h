@@ -18,11 +18,13 @@
 
 #include <runtime/local/datastructures/DataObjectFactory.h>
 #include <runtime/local/datastructures/MetaDataObject.h>
+#include <runtime/local/datastructures/Properties.h>
 
 #include <cstddef>
 #include <map>
 #include <mutex>
 #include <array>
+
 
 /**
  * @brief The base class of all data structure implementations.
@@ -49,6 +51,7 @@ protected:
     mutable std::shared_ptr<MetaDataObject> mdo;
 
 public:
+    Properties* properties = NULL;
     virtual ~Structure() = default;
 
     explicit operator std::unique_ptr<Range>() const {

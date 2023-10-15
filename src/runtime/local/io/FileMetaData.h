@@ -17,6 +17,7 @@
 #pragma once
 
 #include <runtime/local/datastructures/ValueTypeCode.h>
+#include <runtime/local/datastructures/Properties.h>
 
 #include <utility>
 #include <vector>
@@ -33,7 +34,12 @@ struct FileMetaData {
     bool isSingleValueType;
     std::vector<ValueTypeCode> schema;
     std::vector<std::string> labels;
+    std::vector<int> histogram;
+    std::vector<double> minMax;
+    bool unique;
     const ssize_t numNonZeros;
+    ssize_t properties;
+    
     
     /**
      * @brief Construct a new File Meta Data object for Frames
@@ -44,13 +50,22 @@ struct FileMetaData {
         bool isSingleValueType,
         std::vector<ValueTypeCode> schema,
         std::vector<std::string> labels,
-        ssize_t numNonZeros = -1
+        std::vector<int> histogram,
+        std::vector<double> minMax,
+        bool unique,
+        ssize_t numNonZeros = -1,
+        ssize_t properties = -1
     ) :
         numRows(numRows), numCols(numCols),
         isSingleValueType(isSingleValueType),
         schema(std::move(schema)),
         labels(std::move(labels)),
-        numNonZeros(numNonZeros) {}
+        histogram(std::move(histogram)),
+        minMax(std::move(minMax)),
+        unique(unique),
+        numNonZeros(numNonZeros),
+        properties(properties)
+        {}
 
     /**
      * @brief Construct a new File Meta Data object for Matrix
@@ -60,11 +75,13 @@ struct FileMetaData {
         size_t numCols,
         bool isSingleValueType,
         ValueTypeCode valueType,
-        ssize_t numNonZeros = -1
+        ssize_t numNonZeros = -1,
+        ssize_t properties = -1
     ) :
         numRows(numRows), numCols(numCols),
         isSingleValueType(isSingleValueType),
-        numNonZeros(numNonZeros)
+        numNonZeros(numNonZeros), 
+        properties(properties)
     {
         schema.emplace_back(valueType);
     }

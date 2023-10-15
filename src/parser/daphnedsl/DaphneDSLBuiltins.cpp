@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <cstdlib>
 
@@ -1032,10 +1033,17 @@ antlrcpp::Any DaphneDSLBuiltins::build(mlir::Location loc, const std::string & f
             else
                 labels = new std::vector<std::string>(fmd.labels);
 
+            Properties *properties = new Properties();
+            properties->histograms = *(new std::vector<int>(fmd.histogram));
+            properties->numberOfBuckets = 4;
+            properties->minMax = *(new std::vector<double>(fmd.minMax));
+            properties->unique = fmd.unique;
+            auto propertiesPointer = reinterpret_cast<ssize_t>(properties);
+
             resType = mlir::daphne::FrameType::get(
                     // TODO Inserting #rows/#cols here could cause problems, if
                     // the frame is involved in any SCF ops (if/while/for).
-                    builder.getContext(), cts, fmd.numRows, fmd.numCols, labels
+                    builder.getContext(), cts, fmd.numRows, fmd.numCols, labels, propertiesPointer
             );
         }
         else // func == "read.matrix"

@@ -55,17 +55,128 @@ std::vector<double> daphne::FillOp::inferMinMax() {
         Get the number of rows and cols and the value.
     */
     try {
-        auto numRows = CompilerUtils::constantOrThrow<int64_t>(getNumRows());
         auto numCols = CompilerUtils::constantOrThrow<int64_t>(getNumCols());
         auto value = CompilerUtils::constantOrThrow<int64_t>(getArg());
        
-        return std::vector<double>(numCols, value);
+        return std::vector<double>(2, value);
 
     } catch(const std::runtime_error & e) {
-            return {-1.0};
+            return {};
     }
 
 }
+
+std::vector<double> daphne::RandMatrixOp::inferMinMax() {
+
+    /*
+        Get the number of rows and cols and the value.
+    */
+    try {
+        auto min = CompilerUtils::constantOrThrow<int64_t>(getMin());
+        auto max = CompilerUtils::constantOrThrow<int64_t>(getMax());
+       
+        return {min, max};
+
+    } catch(const std::runtime_error & e) {
+            return {};
+    }
+    return {};
+
+}
+
+std::vector<double> daphne::CastOp::inferMinMax() {
+
+    /*
+        Get the number of rows and cols and the value.
+    */
+   auto argType = getArg().getType();
+
+   if (auto ft = argType.dyn_cast<daphne::FrameType>()) {
+
+       
+        if (ft.getProperties() != -1) {
+        std::vector<double> results = {};
+        Properties* properties = reinterpret_cast<Properties*>(ft.getProperties());
+        for (size_t i = 0; i < properties->minMax.size(); i++) {
+            results.push_back(properties->minMax[i]);
+        }
+        return results;
+        }
+   }
+    return {};
+
+}
+
+std::vector<double> daphne::SetColLabelsPrefixOp::inferMinMax() {
+
+    auto argType = getArg().getType();
+
+   if (auto ft = argType.dyn_cast<daphne::FrameType>()) {
+
+       
+        if (ft.getProperties() != -1) {
+        std::vector<double> results = {};
+        Properties* properties = reinterpret_cast<Properties*>(ft.getProperties());
+        for (size_t i = 0; i < properties->minMax.size(); i++) {
+            results.push_back(properties->minMax[i]);
+        }
+        return results;
+        }
+   }
+    return {};
+
+}
+
+std::vector<double> daphne::ExtractColOp::inferMinMax() {
+
+    /*
+        Get the number of rows and cols and the value.
+    */
+    auto argType = getSource().getType();
+
+   if (auto ft = argType.dyn_cast<daphne::FrameType>()) {
+
+       
+        if (ft.getProperties() != -1) {
+        std::vector<double> results = {};
+        Properties* properties = reinterpret_cast<Properties*>(ft.getProperties());
+        for (size_t i = 0; i < properties->minMax.size(); i++) {
+            results.push_back(properties->minMax[i]);
+        }
+        return results;
+        }
+   }
+    return {};
+
+}
+
+std::vector<double> daphne::EwLtOp::inferMinMax() {
+    return {};
+}
+
+std::vector<double> daphne::CreateFrameOp::inferMinMax() {
+
+    /*
+        Get the number of rows and cols and the value.
+    */
+   auto argType = getCols()[0].getType();
+
+   if (auto mt = argType.dyn_cast<daphne::MatrixType>()) {
+
+        if (mt.getProperties() != -1) {
+        std::vector<double> results = {};
+        Properties* properties = reinterpret_cast<Properties*>(mt.getProperties());
+        for (size_t i = 0; i < properties->minMax.size(); i++) {
+            results.push_back(properties->minMax[i]);
+        }
+        return results;
+        }
+   }
+
+    return {};
+
+}
+
 
 // std::vector<double> daphne::SliceColOp::inferMinMax() {
 
@@ -98,42 +209,6 @@ std::vector<double> daphne::FillOp::inferMinMax() {
 
 // }
 
-// std::vector<double> daphne::ExtractColOp::inferMinMax() {
-
-//     Type srcTy = getSource().getType();
-
-//     auto list = getSelectedCols().getType();
-
-//     auto test = llvm::dyn_cast<daphne::MatrixType>(list);
-
-//     if (test)
-//         std::cout << "WTTFFFFFF\n";
-
-//     return {};
-
-// }
-
-
-
-// ****************************************************************************
-// Symmetry inference trait implementations
-// ****************************************FTY************************************
-// template<size_t i>
-// struct tryMinMaxFromIthScalar {
-//     static void apply(ssize_t &symmetry, Operation *op) {
-//         if(op->hasTrait<SymmetryFromIthScalar<i>::template Impl>())
-//             symmetry = CompilerUtils::constantOrDefault<ssize_t>(op->getOperand(i), -1);
-//     }
-// };
-
-// template<size_t i>
-// struct tryMinMaxFromIthArg {
-//     static void apply(ssize_t &symmetry, Operation *op) {
-//         if(op->hasTrait<SymmetryFromIthArg<i>::template Impl>())
-//             symmetry = getMinMaxOrUnknownFromType(op->getOperand(i));
-//     }
-// };
-
 // ****************************************************************************
 // Symmetry inference function
 // ****************************************************************************
@@ -147,11 +222,6 @@ std::vector<double> daphne::tryInferMinMax(Operation *op) {
     else if(op->getNumResults() == 1) {
         return {};
     } else {
-        // If the operation does not implement the symmetry inference interface
-        // and has zero or more than one results, we return unknown.
-        std::vector<bool> symmetries;
-        for(size_t i = 0; i < op->getNumResults(); i++)
-            symmetries.push_back(false);
         return {};
     }
 }

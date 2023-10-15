@@ -69,6 +69,8 @@
 #include <ir/daphneir/DaphneInferTypesOpInterface.h>
 #include <ir/daphneir/DaphneVectorizableOpInterface.h>
 #include <ir/daphneir/DaphneInferMinMaxOpInterface.h>
+#include <ir/daphneir/DaphneInferHistogramOpInterface.h>
+#include <ir/daphneir/DaphneInferUniqueOpInterface.h>
 
 #include <runtime/local/datastructures/Properties.h>
 

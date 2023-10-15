@@ -1,0 +1,13 @@
+m1 = seq(0, 10, 1);
+f = createFrame(m1, "a");
+
+m2 = seq(0, 7, 3);
+h = createFrame(m2,"b");
+
+m3 = seq(0, 7, 3);
+g = createFrame(m3,"c");
+
+
+c = innerJoin(f, h, "a", "b");
+c = innerJoin(c, g, "a", "c");
+print(c);

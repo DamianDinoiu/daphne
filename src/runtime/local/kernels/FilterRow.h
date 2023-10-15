@@ -61,6 +61,9 @@ struct FilterRow<DenseMatrix<VT>, DenseMatrix<VT>, VTSel> {
         const size_t numRowsArg = arg->getNumRows();
         const size_t numCols = arg->getNumCols();
 
+
+        std::cout << "1 = " << sel->getNumRows() << "\n";
+        std::cout << "2 = " << numRowsArg << "\n";
         if(sel->getNumRows() != numRowsArg)
             throw std::runtime_error("sel must have exactly one entry (row) for each row in arg");
         if(sel->getNumCols() != 1)

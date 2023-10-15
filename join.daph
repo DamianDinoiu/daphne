@@ -1,0 +1,15 @@
+m1 = seq(0, 10, 1);
+f = createFrame(m1, "a");
+
+m3 = seq(0, 7, 3);
+h = createFrame(m3,"c");
+
+print(f);
+print(h);
+
+registerView("x", f);
+registerView("y", h);
+
+k = innerJoin(f, h, "a", "c");
+
+print(k);

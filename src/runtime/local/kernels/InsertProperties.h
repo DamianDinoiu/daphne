@@ -47,10 +47,6 @@ void insertProperties(DTRes *& res, DTArg * arg, int64_t * test ,DCTX(ctx)) {
     InsertProperties<DTRes, DTArg>::apply(res, arg, test, ctx);
 }
 
-// ****************************************************************************
-// (Partial) template specializations for different data/value types
-// ****************************************************************************
-
 // ----------------------------------------------------------------------------
 // DenseMatrix <- DenseMatrix
 // ----------------------------------------------------------------------------
@@ -59,16 +55,23 @@ template<typename VT>
 struct InsertProperties<DenseMatrix<VT>, DenseMatrix<VT>> {
     static void apply(DenseMatrix<VT> *& res, DenseMatrix<VT> * arg, int64_t * test, DCTX(ctx)) {
         
-        auto properties = reinterpret_cast<Properties*>(test);
-        auto minMax = properties->minMax;
+        Properties* properties = reinterpret_cast<Properties*>(test);
 
-        // std::cout << "In kernel \n";
-        // for (int i = 0; i < minMax.size(); i++)
-        //     std::cout << minMax[i] << " ";
-        // std::cout << "\n";
-        res = const_cast<DenseMatrix<VT> *>(arg);            
+        res = arg;
         res->increaseRefCounter();
+        res->properties = (properties);
+       
+    }
+};
 
+template<>
+struct InsertProperties<Frame, Frame> {
+    static void apply(Frame *& res, Frame * arg, int64_t * test, DCTX(ctx)) {
+        
+        Properties* properties = reinterpret_cast<Properties*>(test);
+        res = arg;
+        res->increaseRefCounter();
+        res->properties = (properties);
        
     }
 };

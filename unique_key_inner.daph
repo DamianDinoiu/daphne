@@ -1,0 +1,38 @@
+orders = readFrame("orders.csv");
+registerView("orders", orders);
+
+parts = readFrame("parts.csv");
+registerView("parts", parts);
+
+t0 = now();
+result = innerJoin(parts, orders, "partId", "orders.partId");
+t1 = now();
+print(t1-t0);
+
+//Good
+//1m
+//433073764
+//3m
+//1208746940
+//5m
+//2151957732
+//7m
+//2812497019
+//9m
+//3548522444
+//6m
+//2467660640
+
+//Bad
+//1m
+//548289228
+//3m
+//1668644990
+//5m
+//2483876053
+//7m
+//3391295704
+//9m
+//4244492672
+//6m
+//2849829040

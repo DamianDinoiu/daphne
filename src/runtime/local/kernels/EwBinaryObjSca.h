@@ -71,8 +71,9 @@ struct EwBinaryObjSca<DenseMatrix<VT>, DenseMatrix<VT>, VT> {
         EwBinaryScaFuncPtr<VT, VT, VT> func = getEwBinaryScaFuncPtr<VT, VT, VT>(opCode);
         
         for(size_t r = 0; r < numRows; r++) {
-            for(size_t c = 0; c < numCols; c++)
+            for(size_t c = 0; c < numCols; c++) {
                 valuesRes[c] = func(valuesLhs[c], rhs, ctx);
+            }
             valuesLhs += lhs->getRowSkip();
             valuesRes += res->getRowSkip();
         }

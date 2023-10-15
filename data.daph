@@ -1,0 +1,27 @@
+a = readFrame("data.csv");
+
+registerView("x", a);
+
+a1 = sql("SELECT x.a From x Where x.a < 50");
+
+b = readFrame("data1.csv");
+
+registerView("y", b);
+
+b1 = sql("SELECT y.b From y Where y.b < 50");
+
+c = readFrame("data2.csv");
+
+registerView("z", c);
+
+t0 = now();
+
+c1 = sql("SELECT z.c From z Where z.c < 50");
+result = innerJoin(a1, b1, "x.a", "y.b");
+result = innerJoin(result, c1, "x.a", "z.c");
+
+t1 = now();
+
+print(t1 - t0);
+
+print(result);

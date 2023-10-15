@@ -1,0 +1,29 @@
+a = readFrame("customers.csv");
+
+registerView("x", a);
+
+a1 = sql("SELECT x.custId, x.market From x Where x.market < 100");
+
+b = readFrame("orders.csv");
+
+registerView("y", b);
+
+
+c = readFrame("parts.csv");
+
+registerView("z", c);
+
+c1 = sql("SELECT z.partId, z.market From z Where z.market < 100");
+
+t0 = now();
+result = innerJoin(c1, b, "z.partId", "partId");
+t1 = now();
+//print(result);
+
+result = innerJoin(result, a1, "custId", "x.custId");
+t2 = now();
+
+print(result);
+print(t1 - t0);
+print(t2 - t1);
+print(t2 - t0);

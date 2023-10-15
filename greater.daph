@@ -1,0 +1,5 @@
+a = fill(9, 1, 1);
+
+registerView("x", a);
+
+print(a);
