@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "Properties.h"
 #include <runtime/local/datastructures/AllocationDescriptorHost.h>
 #include <runtime/local/datastructures/DataObjectFactory.h>
 #include <runtime/local/datastructures/Matrix.h>
@@ -58,6 +59,8 @@ class DenseMatrix : public Matrix<ValueType>
 
     size_t lastAppendedRowIdx;
     size_t lastAppendedColIdx;
+
+    Properties * properties;
 
     // Grant DataObjectFactory access to the private constructors and
     // destructors.
@@ -232,6 +235,14 @@ public:
         values.get()[0] = ValueType(0);
         lastAppendedRowIdx = 0;
         lastAppendedColIdx = 0;
+    }
+
+    void setProperties(Properties * prop) {
+        this->properties = prop;
+    }
+
+    Properties* getProperties() const{
+        return this->properties;
     }
     
     void append(size_t rowIdx, size_t colIdx, ValueType value) override {

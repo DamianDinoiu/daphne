@@ -25,6 +25,7 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/IR/IRMapping.h"
 
+#include <memory>
 #include <mlir/Pass/Pass.h>
 
 #include <iostream>
@@ -65,7 +66,7 @@ void InsertPropertiesPass::runOnOperation()
                     if (properties->symmetry || properties->minMax.size() != 0) {
 
                         builder.setInsertionPointAfter(op);
-                        auto propertiesPointer = &properties;
+                        std::shared_ptr<Properties> propertiesPointer = properties;
                         auto constantOp = builder.create<mlir::daphne::ConstantOp>(op->getLoc(), reinterpret_cast<ssize_t>(properties.get()));
                         auto pointerValue = static_cast<mlir::Value>(constantOp);
 

@@ -54,6 +54,9 @@ struct Transpose<DenseMatrix<VT>, DenseMatrix<VT>> {
     static void apply(DenseMatrix<VT> *& res, const DenseMatrix<VT> * arg, DCTX(ctx)) {
         const size_t numRows = arg->getNumRows();
         const size_t numCols = arg->getNumCols();
+
+        // std::cout << "We are in transpose and we have\n";
+        // std::cout << arg.getProperties()->symmetry << "\n";
         
         // skip data movement for vectors
         // FIXME: The check (numCols == arg->getRowSkip()) is a hack to check if the input arg is only a "view"
@@ -63,6 +66,7 @@ struct Transpose<DenseMatrix<VT>, DenseMatrix<VT>> {
         }
         else
         {
+            // res = DataObjectFactory::create<DenseMatrix<VT>>(numCols, numRows, arg->getValuesSharedPtr());
             if (res == nullptr)
                 res = DataObjectFactory::create<DenseMatrix<VT>>(numCols, numRows, false);
 

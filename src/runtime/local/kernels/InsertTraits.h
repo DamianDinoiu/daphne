@@ -17,6 +17,7 @@
 #ifndef SRC_RUNTIME_LOCAL_KERNELS_EWUNARYTEST_H
 #define SRC_RUNTIME_LOCAL_KERNELS_EWUNARYTEST_H
 
+#include <memory>
 #include <runtime/local/context/DaphneContext.h>
 #include <runtime/local/datastructures/DataObjectFactory.h>
 #include <runtime/local/datastructures/DenseMatrix.h>
@@ -65,12 +66,10 @@ struct InsertTraits<DenseMatrix<VT>, DenseMatrix<VT>> {
         
         auto properties = reinterpret_cast<Properties*>(test);
         auto minMax = properties->minMax;
+        auto sym = properties->symmetry;
 
-        std::cout << "In kernel \n";
-        for (int i = 0; i < minMax.size(); i++)
-            std::cout << minMax[i] << " ";
-        std::cout << "\n";
-        res = const_cast<DenseMatrix<VT> *>(arg);            
+        res = const_cast<DenseMatrix<VT> *>(arg);
+        res->setProperties(properties);
         res->increaseRefCounter();
 
        

@@ -70,12 +70,25 @@ struct EwBinaryObjSca<DenseMatrix<VT>, DenseMatrix<VT>, VT> {
         
         EwBinaryScaFuncPtr<VT, VT, VT> func = getEwBinaryScaFuncPtr<VT, VT, VT>(opCode);
         
+
+        const Properties *prop = lhs->getProperties();
+        if (prop->symmetry == 1)
+        for(size_t r = 0; r < numRows; r++) {
+            for(size_t c = r; c < numCols; c++) {
+    		    auto value = func(valuesLhs[c], rhs,ctx);
+  		        *(valuesRes + res->getRowSkip() * r + c) = value;
+       	        *(valuesRes + res->getRowSkip() * c + r) = value;
+            }
+        } else {
         for(size_t r = 0; r < numRows; r++) {
             for(size_t c = 0; c < numCols; c++)
                 valuesRes[c] = func(valuesLhs[c], rhs, ctx);
             valuesLhs += lhs->getRowSkip();
             valuesRes += res->getRowSkip();
         }
+        }
+
+        
     }
 };
 

@@ -82,8 +82,8 @@ std::vector<double> daphne::SliceColOp::inferMinMax() {
 
     std::vector<double> newMinMax;
 
-    std::cout << "MinMax = " << minMax.size() << "\n";
-    std::cout << "Inerval = " << (upEx.second - loIn.second) << "\n";
+    // std::cout << "MinMax = " << minMax.size() << "\n";
+    // std::cout << "Inerval = " << (upEx.second - loIn.second) << "\n";
  
     if (minMax.size() != 0) {
     
@@ -105,9 +105,6 @@ std::vector<double> daphne::ExtractColOp::inferMinMax() {
     auto list = getSelectedCols().getType();
 
     auto test = llvm::dyn_cast<daphne::MatrixType>(list);
-
-    if (test)
-        std::cout << "WTTFFFFFF\n";
 
     return {};
 

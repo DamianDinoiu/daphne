@@ -221,8 +221,10 @@ void mlir::daphne::DaphneDialect::printType(mlir::Type type,
         //     os << ":symm[" << symmetry << ']';
 
 
-        if (properties->symmetry)
-            os << ":properties[" << properties.get() << ']';
+        if (properties->symmetry) {
+
+            os << ":properties[sym: " << properties->symmetry << " ]";
+        }
 
         if (representation != MatrixRepresentation::Default) {
             os << ":rep[" << matrixRepresentationToString(representation) << ']';
@@ -1171,9 +1173,10 @@ mlir::LogicalResult mlir::daphne::TransposeOp::canonicalize(
 
     if(auto mt = argTyp.dyn_cast<daphne::MatrixType>()) {
 
-        if (true) {
-             
-            //TODAMIAN - do the logic if the operand is symmetric remove operation
+        auto properties = mt.getProperties();
+        if (properties->symmetry) {
+            // rewriter.replaceAllUsesWith(op, op.getArg());
+            rewriter.replaceOp(op, op.getArg());
             return mlir::success();
         }
 
